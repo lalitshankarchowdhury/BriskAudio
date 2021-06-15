@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <stdlib.h>
 
 typedef enum {
@@ -29,7 +30,7 @@ typedef struct {
 #include <alsa/asoundlib.h>
 
 int openDefaultDevice(Device* deviceHandle) {
-    int err = snd_pcm_open(deviceHandle == NULL || (snd_pcm_t**) &(deviceHandle->nativeDeviceHandle),
+    int err = snd_pcm_open((snd_pcm_t**) &(deviceHandle->nativeDeviceHandle),
                  "default", 
                  SND_PCM_STREAM_PLAYBACK, 
                  SND_PCM_NONBLOCK);
@@ -41,52 +42,53 @@ int openDefaultDevice(Device* deviceHandle) {
     return 0;
 }
 
-EnumeratedDevice* enumerateDevices() {
-    char **hints;
-    int enumeratedDeviceArraySize = 4;
-    EnumerateDevice* enumeratedDevices = (EnumerateDevice*) malloc(enumeratedDeviceArraySize * sizeof(EnumerateDevice));
+EnumeratedDevice* enumerateDevices(int* numDevices) {
+    char** hints;
 
-    if (enumeratedDevices == NULL) {
-        free(enumeratedDevices);
-
+    if (snd_device_name_hint(-1, "pcm", (void***) &hints) < 0) {
         return NULL;
     }
 
-    if (snd_device_name_hint(-1, "pcm", (void***) &hints) < 0) {
-        free(enumeratedDevices);
-        
+    int blockSize = 4;
+
+    EnumeratedDevice* enumeratedDevices = (EnumeratedDevice*) malloc(blockSize * sizeof(EnumeratedDevice));
+
+    if (enumeratedDevices == NULL) {
         return NULL;
     }
 
     int cnt = 0;
 
-    while (*hints != NULL) {
-        if (cnt == enumeratedDeviceArraySize) {
-            enumeratedDeviceArraySize += 1;
+    while(hints[cnt] != NULL) {
+        if (cnt == blockSize) {
+            blockSize += 1;
 
-            EnumeratedDevice* temp = realloc(enumeratedDevices, enumeratedDeviceArraySize);
+            EnumeratedDevice* temp = realloc(enumeratedDevices, blockSize * sizeof(EnumeratedDevice));
 
             if (temp == NULL) {
                 free(enumeratedDevices);
-        
+
                 return NULL;
             }
+
+            enumeratedDevices = temp;
         }
 
-        enumeratedDevices[cnt].ID = snd_device_name_get_hint(*hints, "IOID");
-        enumeratedDevices[cnt].name = snd_device_name_get_hint(*hints, "NAME");
+        enumeratedDevices[cnt].ID = snd_device_name_get_hint(hints[cnt], "IOID");
+        enumeratedDevices[cnt].name = snd_device_name_get_hint(hints[cnt], "NAME");
 
         cnt++;
-        hints++;
     }
+
+    *numDevices = cnt;
 
     return enumeratedDevices;
 }
 
 int closeDefaultDevice(Device* deviceHandle) {
-    if (snd_pcm_close((snd_pcm_t*) deviceHandle->nativeDeviceHandle) < 0) {
+    if (deviceHandle == NULL || snd_pcm_close((snd_pcm_t*) deviceHandle->nativeDeviceHandle) < 0) {
         return 1;
-    }    
+    }
 
     return 0;
 }
@@ -134,7 +136,7 @@ Exit:
     return err;
 }
 
-EnumeratedDevice* enumerateDevices() {
+EnumeratedDevice** enumerateDevices() {
     return NULL;
 }
 
@@ -150,13 +152,25 @@ int closeDefaultDevice(Device* deviceHandle) {
 #endif
 
 int main() {
-    printf("%lu\n", sizeof(Device));
-    printf("%lu\n", sizeof(EnumeratedDevice));
-
     Device deviceHandle;
 
     assert(openDefaultDevice(&deviceHandle) == 0);
     assert(closeDefaultDevice(&deviceHandle) == 0);
+
+    int numDevices = 0;
+
+    EnumeratedDevice* enumeratedDevices = enumerateDevices(&numDevices);
+
+    printf("Total devices: %d\n", numDevices);
+
+    assert(enumeratedDevices != NULL);
+
+    for (int i = 0; i < numDevices; i++) {
+        printf("Device ID: %s\n", enumeratedDevices[i].ID);
+        printf("Device name: %s\n", enumeratedDevices[i].name);
+    }
+
+    free(enumeratedDevices);
 
     return EXIT_SUCCESS;
 }
