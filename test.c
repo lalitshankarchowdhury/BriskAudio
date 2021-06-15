@@ -3,23 +3,13 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#ifdef __linux__
-#include <alsa/asoundlib.h>
-typedef snd_pcm_t NativeDeviceHandle;
-#endif
-
-#ifdef _WIN32
-#include <mmdeviceapi.h>
-typedef IMMDevice NativeDeviceHandle;
-#endif
-
 typedef enum {
     DEVICE_TYPE_INPUT,
     DEVICE_TYPE_OUTPUT
 } DeviceType;
 
 typedef struct {
-    NativeDeviceHandle* handle;
+    void* nativeDeviceHandle;
     int deviceID;
     bool isDefault;
     const char* name;
@@ -36,8 +26,15 @@ typedef struct {
 } EnumeratedDevice;
 
 #ifdef __linux__
+#include <alsa/asoundlib.h>
+
 int openDefaultDevice(Device* device) {
-    if (snd_pcm_open((snd_pcm_t**)&(device->handle), "default", SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
+    int err = (snd_pcm_open((snd_pcm_t**) &(device->nativeDeviceHandle)),
+                 "default", 
+                 SND_PCM_STREAM_PLAYBACK, 
+                 SND_PCM_NONBLOCK);
+
+    if (err < 0) {
         return 1;
     }
 
@@ -45,15 +42,17 @@ int openDefaultDevice(Device* device) {
 }
 
 int closeDefaultDevice(Device* device) {
-    if (snd_pcm_close((snd_pcm_t*)device->handle) < 0) {
+    if (snd_pcm_close((snd_pcm_t*) device->nativeDeviceHandle) < 0) {
         return 1;
-    }
+    }    
 
     return 0;
 }
 #endif
 
 #ifdef _WIN32
+#include <mmdeviceapi.h>
+
 int openDefaultDevice(Device* device) {
     return 0;
 }
