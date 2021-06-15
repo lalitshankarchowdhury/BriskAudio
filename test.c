@@ -29,7 +29,7 @@ typedef struct {
 #include <alsa/asoundlib.h>
 
 int openDefaultDevice(Device* device) {
-    int err = (snd_pcm_open((snd_pcm_t**) &(device->nativeDeviceHandle)),
+    int err = snd_pcm_open((snd_pcm_t**) &(device->nativeDeviceHandle),
                  "default", 
                  SND_PCM_STREAM_PLAYBACK, 
                  SND_PCM_NONBLOCK);
