@@ -10,7 +10,7 @@ typedef enum {
 
 typedef struct {
     void* nativeDeviceHandle;
-    int deviceID;
+    const char* ID;
     bool isDefault;
     const char* name;
     DeviceType type;
@@ -21,7 +21,7 @@ typedef struct {
 } Device;
 
 typedef struct {
-    int deviceID;
+    const char* ID;
     const char* name;
 } EnumeratedDevice;
 
@@ -29,7 +29,7 @@ typedef struct {
 #include <alsa/asoundlib.h>
 
 int openDefaultDevice(Device* deviceHandle) {
-    int err = snd_pcm_open((snd_pcm_t**) &(deviceHandle->nativeDeviceHandle),
+    int err = snd_pcm_open(deviceHandle == NULL || (snd_pcm_t**) &(deviceHandle->nativeDeviceHandle),
                  "default", 
                  SND_PCM_STREAM_PLAYBACK, 
                  SND_PCM_NONBLOCK);
@@ -39,6 +39,48 @@ int openDefaultDevice(Device* deviceHandle) {
     }
 
     return 0;
+}
+
+EnumeratedDevice* enumerateDevices() {
+    char **hints;
+    int enumeratedDeviceArraySize = 4;
+    EnumerateDevice* enumeratedDevices = (EnumerateDevice*) malloc(enumeratedDeviceArraySize * sizeof(EnumerateDevice));
+
+    if (enumeratedDevices == NULL) {
+        free(enumeratedDevices);
+
+        return NULL;
+    }
+
+    if (snd_device_name_hint(-1, "pcm", (void***) &hints) < 0) {
+        free(enumeratedDevices);
+        
+        return NULL;
+    }
+
+    int cnt = 0;
+
+    while (*hints != NULL) {
+        if (cnt == enumeratedDeviceArraySize) {
+            enumeratedDeviceArraySize += 1;
+
+            EnumeratedDevice* temp = realloc(enumeratedDevices, enumeratedDeviceArraySize);
+
+            if (temp == NULL) {
+                free(enumeratedDevices);
+        
+                return NULL;
+            }
+        }
+
+        enumeratedDevices[cnt].ID = snd_device_name_get_hint(*hints, "IOID");
+        enumeratedDevices[cnt].name = snd_device_name_get_hint(*hints, "NAME");
+
+        cnt++;
+        hints++;
+    }
+
+    return enumeratedDevices;
 }
 
 int closeDefaultDevice(Device* deviceHandle) {
@@ -92,7 +134,15 @@ Exit:
     return err;
 }
 
+EnumeratedDevice* enumerateDevices() {
+    return NULL;
+}
+
 int closeDefaultDevice(Device* deviceHandle) {
+    if (deviceHandle == NULL) {
+        return 1;
+    }
+
     CoUninitialize();
 
     return 0;
