@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <mmdeviceapi.h>
 
-#ifdef _linux_
+#ifdef __linux__
+#include <alsa/asoundlib.h>
 typedef snd_pcm_t NativeDeviceHandle;
 #endif
 
 #ifdef _WIN32
+#include <mmdeviceapi.h>
 typedef IMMDevice NativeDeviceHandle;
 #endif
 
@@ -34,9 +35,9 @@ typedef struct {
     const char* name;
 } EnumeratedDevice;
 
-#ifdef _linux_
+#ifdef __linux__
 int openDefaultDevice(Device* device) {
-    if (snd_pcm_open(&(device->handle), "default", SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
+    if ((snd_pcm_open((snd_pcm_t**)device->handle), "default", SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
         return 1;
     }
 
@@ -44,7 +45,7 @@ int openDefaultDevice(Device* device) {
 }
 
 int closeDefaultDevice(Device* device) {
-    if (snd_pcm_close(&(device->handle)) < 0) {
+    if (snd_pcm_close((snd_pcm_t**)device->handle) < 0) {
         return 1;
     }    
 
