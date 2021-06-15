@@ -136,7 +136,9 @@ Exit:
     return err;
 }
 
-EnumeratedDevice** enumerateDevices() {
+EnumeratedDevice* enumerateDevices(int* numDevices) {
+    *numDevices = 0;
+
     return NULL;
 }
 
@@ -161,9 +163,9 @@ int main() {
 
     EnumeratedDevice* enumeratedDevices = enumerateDevices(&numDevices);
 
-    printf("Total devices: %d\n", numDevices);
-
     assert(enumeratedDevices != NULL);
+
+    printf("Total devices: %d\n", numDevices);
 
     for (int i = 0; i < numDevices; i++) {
         printf("Device ID: %s\n", enumeratedDevices[i].ID);
