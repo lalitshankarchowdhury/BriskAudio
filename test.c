@@ -37,7 +37,7 @@ typedef struct {
 
 #ifdef __linux__
 int openDefaultDevice(Device* device) {
-    if ((snd_pcm_open((snd_pcm_t**)device->handle), "default", SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
+    if (snd_pcm_open((snd_pcm_t**)&(device->handle), "default", SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
         return 1;
     }
 
@@ -45,9 +45,9 @@ int openDefaultDevice(Device* device) {
 }
 
 int closeDefaultDevice(Device* device) {
-    if (snd_pcm_close((snd_pcm_t**)device->handle) < 0) {
+    if (snd_pcm_close((snd_pcm_t*)device->handle) < 0) {
         return 1;
-    }    
+    }
 
     return 0;
 }
