@@ -224,6 +224,8 @@ int main() {
         printf("Device name: %ls\n", enumeratedDevices[i].name);
     }
 
+    getchar();
+
     free(enumeratedDevices);
 
     return EXIT_SUCCESS;
