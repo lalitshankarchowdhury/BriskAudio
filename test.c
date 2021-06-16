@@ -13,7 +13,7 @@ typedef struct {
     void* nativeDeviceHandle;
     const char* ID;
     bool isDefault;
-    const char* name;
+    const wchar_t* name;
     DeviceType type;
     unsigned int channels;
     unsigned int numSamples;
@@ -22,8 +22,8 @@ typedef struct {
 } Device;
 
 typedef struct {
-    const char* ID;
-    const char* name;
+    const wchar_t* ID;
+    const wchar_t* name;
 } EnumeratedDevice;
 
 #ifdef __linux__
@@ -42,7 +42,9 @@ int openDefaultDevice(Device* deviceHandle) {
     return 0;
 }
 
-EnumeratedDevice* enumerateDevices(int* numDevices) {
+EnumeratedDevice* enumerateDevices(unsigned int* numDevices) {
+    *numDevices = 0;
+
     char** hints;
 
     if (snd_device_name_hint(-1, "pcm", (void***) &hints) < 0) {
@@ -51,7 +53,7 @@ EnumeratedDevice* enumerateDevices(int* numDevices) {
 
     int blockSize = 4;
 
-    EnumeratedDevice* enumeratedDevices = (EnumeratedDevice*) malloc(blockSize * sizeof(EnumeratedDevice));
+    EnumeratedDevice* enumeratedDevices = (EnumeratedDevice*) calloc(blockSize, sizeof(EnumeratedDevice));
 
     if (enumeratedDevices == NULL) {
         return NULL;
@@ -96,58 +98,108 @@ int closeDefaultDevice(Device* deviceHandle) {
 
 #ifdef _WIN32
 #include <initguid.h>
-#include <Audioclient.h>
 #include <mmdeviceapi.h>
+#include <functiondiscoverykeys_devpkey.h>
 
 DEFINE_GUID(CLSID_MMDeviceEnumerator, 0xBCDE0395, 0xE52F, 0x467C, 0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E);
 DEFINE_GUID(IID_IMMDeviceEnumerator,  0xA95664D2, 0x9614, 0x4F35, 0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6);
 DEFINE_GUID(IID_IAudioClient, 0x1CB9AD4C, 0xDBFA, 0x4c32, 0xB1, 0x78, 0xC2, 0xF5, 0x68, 0xA7, 0x03, 0xB2);
 
-#define SAFE_RELEASE(punk)  \
-              if ((punk) != NULL)  \
-                { (punk)->lpVtbl->Release(punk); (punk) = NULL; }
+IMMDevice* device = NULL;
 
 int openDefaultDevice(Device* deviceHandle) {
+    IMMDeviceEnumerator* enumerator = NULL;
+
     int err = 0;
 
     CoInitialize(NULL);
 
-    IMMDeviceEnumerator* enumerator = NULL;
-
     if (FAILED(CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**) &enumerator))) {
-        err = 1;
-
-        goto Exit;
+        return 1;
     }
 
-    IMMDevice* device = NULL;
-
     if (FAILED(enumerator->lpVtbl->GetDefaultAudioEndpoint(enumerator, eRender, eConsole, &device))) {
-        err = 1;
-
-        goto Exit;
+        return 1;
     }
 
     deviceHandle->nativeDeviceHandle = device;
 
-Exit:
-    SAFE_RELEASE(enumerator);
+    CoUninitialize();
 
-    return err;
+    return 0;
 }
 
-EnumeratedDevice* enumerateDevices(int* numDevices) {
+EnumeratedDevice* enumerateDevices(unsigned int* numDevices) {
     *numDevices = 0;
 
-    return NULL;
+    CoInitialize(NULL);
+
+    IMMDeviceEnumerator* enumerator = NULL;
+    IMMDeviceCollection* collection = NULL;
+    IPropertyStore *store = NULL;
+    LPWSTR pwszID = NULL;
+
+    if (FAILED(CoCreateInstance(&CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, &IID_IMMDeviceEnumerator, (void**) &enumerator))) {
+        return NULL;
+    }
+
+    if (FAILED(enumerator->lpVtbl->EnumAudioEndpoints(enumerator, eRender, DEVICE_STATE_ACTIVE, &collection))) {
+        return NULL;
+    }
+
+    if (FAILED(collection->lpVtbl->GetCount(collection, numDevices))) {
+        return NULL;
+    }
+
+    int blockSize = 4;
+
+    EnumeratedDevice* enumeratedDevices = (EnumeratedDevice*) calloc(blockSize, sizeof(EnumeratedDevice));
+
+    if (enumeratedDevices == NULL) {
+        return NULL;
+    }
+
+    for (ULONG i = 0; i < *numDevices; i++)
+    {
+        if (i == blockSize) {
+            blockSize += 1;
+
+            EnumeratedDevice* temp = realloc(enumeratedDevices, blockSize * sizeof(EnumeratedDevice));
+
+            if (temp == NULL) {
+                free(enumeratedDevices);
+
+                return NULL;
+            }
+
+            enumeratedDevices = temp;
+        }
+
+        collection->lpVtbl->Item(collection, i, &device);
+
+        device->lpVtbl->GetId(device, &pwszID);
+        
+        device->lpVtbl->OpenPropertyStore(device, STGM_READ, &store);
+
+        PROPVARIANT varName;
+
+        PropVariantInit(&varName);
+
+        store->lpVtbl->GetValue(store, &PKEY_Device_FriendlyName, &varName);
+
+        enumeratedDevices[i].ID = pwszID;
+        enumeratedDevices[i].name = varName.pwszVal;
+    }
+
+    CoUninitialize();
+
+    return enumeratedDevices;
 }
 
 int closeDefaultDevice(Device* deviceHandle) {
     if (deviceHandle == NULL) {
         return 1;
     }
-
-    CoUninitialize();
 
     return 0;
 }
@@ -159,17 +211,17 @@ int main() {
     assert(openDefaultDevice(&deviceHandle) == 0);
     assert(closeDefaultDevice(&deviceHandle) == 0);
 
-    int numDevices = 0;
+    unsigned int numDevices = 0;
 
     EnumeratedDevice* enumeratedDevices = enumerateDevices(&numDevices);
 
+    printf("Total devices: %u\n", numDevices);
+
     assert(enumeratedDevices != NULL);
 
-    printf("Total devices: %d\n", numDevices);
-
     for (int i = 0; i < numDevices; i++) {
-        printf("Device ID: %s\n", enumeratedDevices[i].ID);
-        printf("Device name: %s\n", enumeratedDevices[i].name);
+        printf("Device ID: %ls\n", enumeratedDevices[i].ID);
+        printf("Device name: %ls\n", enumeratedDevices[i].name);
     }
 
     free(enumeratedDevices);
