@@ -21,12 +21,7 @@ namespace BriskAudio {
         PLAYBACK
     };
 
-    struct ChannelCountLimit {
-        unsigned int min;
-        unsigned int max;     
-    };
-
-    struct BufferSizeLimit {
+    struct Limits {
         unsigned int min;
         unsigned int max;
     };
@@ -35,20 +30,26 @@ namespace BriskAudio {
         std::string name;
         std::string ID;
         DeviceType deviceType;
-        ChannelCountLimit inputChannels;
-        ChannelCountLimit outputChannels;
-        ChannelCountLimit duplexChannels;
+        Limits inputChannels;
+        Limits outputChannels;
+        Limits duplexChannels;
         std::vector<unsigned int> supportedSampleRates;
-        BufferSizeLimit bufferSizes;
+        Limits bufferSizeInFrames;
         BufferFormat supportedBufferFormats;
 
         DeviceInfo() {
-            inputChannels = ChannelCount {0, 0};
-            outputChannels = ChannelCount {0, 0};
-            duplexChannels = ChannelCount {0, 0};
+            inputChannels = Limits {0, 0};
+            outputChannels = Limits {0, 0};
+            duplexChannels = Limits {0, 0};
+            bufferSizeInFrames = Limits {0, 0};
         }
 
         unsigned int getDeviceCount();
         DeviceInfo getDeviceInfo(unsigned int i);
     };
+    
+    struct Device {
+        void* nativeDeviceHandle;
+        DeviceInfo info;
+    }
 }
