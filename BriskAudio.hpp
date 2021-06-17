@@ -9,7 +9,6 @@ namespace BriskAudio {
 
     enum class BufferFormat {
         U_INT_8,
-        S_INT_8,
         S_INT_16,
         S_INT_24,
         S_INT_32,
@@ -22,20 +21,25 @@ namespace BriskAudio {
         PLAYBACK
     };
 
-    struct ChannelCount {
+    struct ChannelCountLimit {
         unsigned int min;
         unsigned int max;     
+    };
+
+    struct BufferSizeLimit {
+        unsigned int min;
+        unsigned int max;
     };
 
     struct DeviceInfo {
         std::string name;
         std::string ID;
         DeviceType deviceType;
-        ChannelCount inputChannels;
-        ChannelCount outputChannels;
-        ChannelCount duplexChannels;
+        ChannelCountLimit inputChannels;
+        ChannelCountLimit outputChannels;
+        ChannelCountLimit duplexChannels;
         std::vector<unsigned int> supportedSampleRates;
-        std::vector<unsigned int> supportedBufferSizes;
+        BufferSizeLimit bufferSizes;
         BufferFormat supportedBufferFormats;
 
         DeviceInfo() {
