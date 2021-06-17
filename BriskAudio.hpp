@@ -30,7 +30,6 @@ namespace BriskAudio {
     struct DeviceInfo {
         std::string name;
         std::string ID;
-        bool isDefault;
         DeviceType deviceType;
         ChannelCount inputChannels;
         ChannelCount outputChannels;
@@ -40,7 +39,6 @@ namespace BriskAudio {
         BufferFormat supportedBufferFormats;
 
         DeviceInfo() {
-            isDefault = false;
             inputChannels = ChannelCount {0, 0};
             outputChannels = ChannelCount {0, 0};
             duplexChannels = ChannelCount {0, 0};
