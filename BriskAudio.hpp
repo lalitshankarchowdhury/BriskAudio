@@ -41,10 +41,9 @@ namespace BriskAudio {
 
         DeviceInfo() {
             isDefault = false;
-            minInputChannels = 0;
-            minOutputChannels = 0;
-            maxInputChannels = 0;
-            maxOutputChannels = 0;
+            inputChannels = ChannelCount {0, 0};
+            outputChannels = ChannelCount {0, 0};
+            duplexChannels = ChannelCount {0, 0};
         }
 
         unsigned int getDeviceCount();
