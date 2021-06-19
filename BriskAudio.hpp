@@ -2,11 +2,6 @@
 #include <string>
 
 namespace BriskAudio {
-    enum ExitStatus {
-        SUCCESS,
-        FAILURE
-    };
-
     enum class BufferFormat {
         U_INT_8,
         S_INT_16,
@@ -27,8 +22,9 @@ namespace BriskAudio {
     };
 
     struct DeviceInfo {
+        bool isValid;
         std::string name;
-        std::string ID;
+        std::string description;
         DeviceType deviceType;
         Limits inputChannels;
         Limits outputChannels;
@@ -38,12 +34,11 @@ namespace BriskAudio {
         BufferFormat supportedBufferFormats;
 
         DeviceInfo() {
-            inputChannels = Limits {0, 0};
-            outputChannels = Limits {0, 0};
-            duplexChannels = Limits {0, 0};
-            bufferSizeInFrames = Limits {0, 0};
+            isValid = false;
         }
+    };
 
+    struct DeviceEnumerator {
         unsigned int getDeviceCount();
         DeviceInfo getDeviceInfo(unsigned int i);
     };
@@ -51,5 +46,5 @@ namespace BriskAudio {
     struct Device {
         void* nativeDeviceHandle;
         DeviceInfo info;
-    }
+    };
 }
