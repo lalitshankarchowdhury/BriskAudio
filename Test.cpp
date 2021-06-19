@@ -11,9 +11,11 @@ int main() {
         deviceInfo = deviceEnumerator.getDeviceInfo(i);
 
         if (deviceInfo.isValid) {
+            std::cout << "--------------------------------------------------------------------------------" << '\n';
             std::cout << "Name: " << deviceInfo.name << '\n';
             std::cout << "Description: " << deviceInfo.description << '\n';
-            std::cout << "-------------------------------------------------------" << '\n';
         }
     }
+
+    std::cout << "--------------------------------------------------------------------------------" << '\n';
 }
