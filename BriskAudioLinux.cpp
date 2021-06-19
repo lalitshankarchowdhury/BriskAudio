@@ -1,5 +1,4 @@
 #ifdef __linux__
-#include <iostream>
 #include "BriskAudio.hpp"
 
 #include <alsa/asoundlib.h>
