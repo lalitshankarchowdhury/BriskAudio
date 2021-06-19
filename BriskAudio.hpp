@@ -13,7 +13,7 @@ namespace BriskAudio {
 
     enum class DeviceType {
         CAPTURE,
-        PLAYBACK
+        PLAYBACK,
     };
 
     struct Limits {
