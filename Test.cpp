@@ -13,6 +13,7 @@ int main() {
         if (deviceInfo.isValid) {
             std::cout << "Name: " << deviceInfo.name << '\n';
             std::cout << "Description: " << deviceInfo.description << '\n';
+            std::cout << "-------------------------------------------------------" << '\n';
         }
     }
 }
