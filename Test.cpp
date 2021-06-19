@@ -12,7 +12,6 @@ int main() {
         if (deviceInfo.isValid) {
             std::cout << "Name: " << deviceInfo.name << '\n';
             std::cout << "Description: " << deviceInfo.description << '\n';
-            unsigned int i  = deviceInfo.supportedSampleRates[0];
         }
     }
 }
