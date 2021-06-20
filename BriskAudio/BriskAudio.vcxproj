@@ -145,10 +145,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BriskAudio.hpp" />
+    <ClInclude Include="..\src\BriskAudio.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BriskAudioLinux.cpp" />
     <ClCompile Include="..\BriskAudioWindows.cpp" />
+    <ClCompile Include="..\src\BriskAudioLinux.cpp" />
+    <ClCompile Include="..\src\BriskAudioWindows.cpp" />
+    <ClCompile Include="..\src\Test.cpp" />
     <ClCompile Include="..\Test.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
