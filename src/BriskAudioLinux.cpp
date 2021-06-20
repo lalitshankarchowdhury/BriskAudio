@@ -3,9 +3,9 @@
 
 #include <alsa/asoundlib.h>
 
-namespace BriskAudio {
-    char** hints;
+static char** hints;
 
+namespace BriskAudio {
     unsigned int DeviceEnumerator::getDeviceCount() {
         if (snd_device_name_hint(-1, "pcm", (void***) &hints) != 0) {
             return 0;
