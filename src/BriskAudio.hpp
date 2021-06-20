@@ -14,6 +14,7 @@ namespace BriskAudio {
     enum class DeviceType {
         CAPTURE,
         PLAYBACK,
+        ALL
     };
 
     struct Limits {
@@ -38,7 +39,7 @@ namespace BriskAudio {
         }
     };
 
-    struct DeviceEnumerator {
+    struct DeviceInfoCollection {
         unsigned int getDeviceCount(DeviceType deviceType);
         DeviceInfo getDeviceInfo(unsigned int i, DeviceType deviceType);
     };
