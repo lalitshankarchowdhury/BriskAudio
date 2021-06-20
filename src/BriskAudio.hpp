@@ -39,8 +39,8 @@ namespace BriskAudio {
     };
 
     struct DeviceEnumerator {
-        unsigned int getDeviceCount();
-        DeviceInfo getDeviceInfo(unsigned int i);
+        unsigned int getDeviceCount(DeviceType deviceType);
+        DeviceInfo getDeviceInfo(unsigned int i, DeviceType deviceType);
     };
     
     struct Device {
