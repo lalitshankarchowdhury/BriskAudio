@@ -6,8 +6,12 @@ int main() {
     BriskAudio::DeviceEnumerator deviceEnumerator;
     BriskAudio::DeviceInfo deviceInfo;
 
+    unsigned int deviceCount = deviceEnumerator.getDeviceCount();
+
+    std::cout << "Device count: " << deviceCount << '\n';
+
     // Display device details if successfully probed
-    for (unsigned int i = 0; i < deviceEnumerator.getDeviceCount(); i++) {
+    for (unsigned int i = 0; i < deviceCount; i++) {
         deviceInfo = deviceEnumerator.getDeviceInfo(i);
 
         if (deviceInfo.isValid) {
@@ -18,4 +22,6 @@ int main() {
     }
 
     std::cout << "--------------------------------------------------------------------------------" << '\n';
+
+    std::getchar();
 }
