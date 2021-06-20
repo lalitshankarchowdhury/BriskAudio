@@ -6,7 +6,7 @@
 static char** hints;
 
 namespace BriskAudio {
-    unsigned int DeviceEnumerator::getDeviceCount() {
+    unsigned int DeviceEnumerator::getDeviceCount(DeviceType deviceType) {
         if (snd_device_name_hint(-1, "pcm", (void***) &hints) != 0) {
             return 0;
         }
@@ -20,7 +20,7 @@ namespace BriskAudio {
         return deviceCount;
     }
 
-    DeviceInfo DeviceEnumerator::getDeviceInfo(unsigned int i) {
+    DeviceInfo DeviceEnumerator::getDeviceInfo(unsigned int i, DeviceType deviceType) {
         DeviceInfo temp;
 
         char* temp_name;
