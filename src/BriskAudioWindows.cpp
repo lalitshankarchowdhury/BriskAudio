@@ -5,16 +5,25 @@
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
+static HRESULT result;
+static IMMDeviceEnumerator *enumerator = NULL;
 static IMMDeviceCollection *collection = NULL;
 
 namespace BriskAudio
 {
-	unsigned int DeviceEnumerator::getDeviceCount()
+	unsigned int DeviceEnumerator::getDeviceCount(DeviceType deviceType)
 	{
 		HRESULT result;
 		IMMDeviceEnumerator *enumerator = NULL;
+		IMMDeviceCollection *collection = NULL;
+		EDataFlow dataFlow;
 
-		CoInitialize(NULL);
+		result = CoInitialize(NULL);
+
+		if (FAILED(result))
+		{
+			return 0;
+		}		
 
 		result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void **)&enumerator);
 
@@ -23,7 +32,13 @@ namespace BriskAudio
 			return 0;
 		}
 
-		result = enumerator->EnumAudioEndpoints(eRender, DEVICE_STATEMASK_ALL, &collection);
+		if (deviceType == DeviceType::PLAYBACK) {
+			dataFlow = eRender;
+		} else {
+			dataFlow = eCapture;
+		}
+
+		result = enumerator->EnumAudioEndpoints(dataFlow, DEVICE_STATEMASK_ALL, &collection);
 
 		if (FAILED(result))
 		{
@@ -39,16 +54,49 @@ namespace BriskAudio
 			return 0;
 		}
 
+		CoUninitialize();
+
 		return deviceCount;
 	}
 
-	DeviceInfo DeviceEnumerator::getDeviceInfo(unsigned int i)
+	DeviceInfo DeviceEnumerator::getDeviceInfo(unsigned int i, DeviceType deviceType)
 	{
-		HRESULT result;
 		IMMDevice *device = NULL;
 		DeviceInfo temp;
 		IPropertyStore *store = NULL;
 		PROPVARIANT varName;
+		EDataFlow dataFlow;
+
+		result = CoInitialize(NULL);
+
+		if (FAILED(result))
+		{
+			return DeviceInfo();
+		}
+
+		result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void **)&enumerator);
+
+		if (FAILED(result))
+		{
+			return DeviceInfo();
+		}
+
+		if (deviceType == DeviceType::PLAYBACK) {
+			dataFlow = eRender;
+
+			temp.deviceType = DeviceType::PLAYBACK;
+		} else {
+			dataFlow = eCapture;
+
+			temp.deviceType = DeviceType::CAPTURE;
+		}
+
+		result = enumerator->EnumAudioEndpoints(dataFlow, DEVICE_STATEMASK_ALL, &collection);
+
+		if (FAILED(result))
+		{
+			return DeviceInfo();
+		}
 
 		result = collection->Item(i, &device);
 
