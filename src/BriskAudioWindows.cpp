@@ -9,10 +9,8 @@ static HRESULT result;
 static IMMDeviceEnumerator *enumerator = NULL;
 static IMMDeviceCollection *collection = NULL;
 
-namespace BriskAudio
-{
-	unsigned int DeviceEnumerator::getDeviceCount(DeviceType deviceType)
-	{
+namespace BriskAudio {
+	unsigned int DeviceInfoCollection::getDeviceCount(DeviceType deviceType) {
 		HRESULT result;
 		IMMDeviceEnumerator *enumerator = NULL;
 		IMMDeviceCollection *collection = NULL;
@@ -20,28 +18,27 @@ namespace BriskAudio
 
 		result = CoInitialize(NULL);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return 0;
 		}		
 
 		result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void **)&enumerator);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return 0;
 		}
 
 		if (deviceType == DeviceType::PLAYBACK) {
 			dataFlow = eRender;
-		} else {
+		} else if (deviceType == DeviceType::CAPTURE) {
 			dataFlow = eCapture;
+		} else {
+			dataFlow = eAll;
 		}
 
 		result = enumerator->EnumAudioEndpoints(dataFlow, DEVICE_STATEMASK_ALL, &collection);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return 0;
 		}
 
@@ -49,8 +46,7 @@ namespace BriskAudio
 
 		result = collection->GetCount(&deviceCount);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return 0;
 		}
 
@@ -59,8 +55,7 @@ namespace BriskAudio
 		return deviceCount;
 	}
 
-	DeviceInfo DeviceEnumerator::getDeviceInfo(unsigned int i, DeviceType deviceType)
-	{
+	DeviceInfo DeviceInfoCollection::getDeviceInfo(unsigned int i, DeviceType deviceType) {
 		IMMDevice *device = NULL;
 		DeviceInfo temp;
 		IPropertyStore *store = NULL;
@@ -69,15 +64,13 @@ namespace BriskAudio
 
 		result = CoInitialize(NULL);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
 		result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void **)&enumerator);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
@@ -85,30 +78,31 @@ namespace BriskAudio
 			dataFlow = eRender;
 
 			temp.deviceType = DeviceType::PLAYBACK;
-		} else {
+		} else if (deviceType == DeviceType::CAPTURE) {
 			dataFlow = eCapture;
 
 			temp.deviceType = DeviceType::CAPTURE;
+		} else {
+			dataFlow = eAll;
+
+			temp.deviceType = DeviceType::ALL;
 		}
 
 		result = enumerator->EnumAudioEndpoints(dataFlow, DEVICE_STATEMASK_ALL, &collection);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
 		result = collection->Item(i, &device);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
 		result = device->OpenPropertyStore(STGM_READ, &store);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
@@ -116,8 +110,7 @@ namespace BriskAudio
 
 		result = store->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
@@ -125,8 +118,7 @@ namespace BriskAudio
 
 		result = store->GetValue(PKEY_Device_DeviceDesc, &varName);
 
-		if (FAILED(result))
-		{
+		if (FAILED(result)) {
 			return DeviceInfo();
 		}
 
