@@ -114,7 +114,7 @@ namespace BriskAudio
 
 		PropVariantInit(&varName);
 
-		result = store->GetValue(PKEY_Device_FriendlyName, &varName);
+		result = store->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
 
 		if (FAILED(result))
 		{
