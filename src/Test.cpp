@@ -2,17 +2,38 @@
 
 #include "BriskAudio.hpp"
 
+using namespace BriskAudio;
+
 int main() {
-    BriskAudio::DeviceEnumerator deviceEnumerator;
-    BriskAudio::DeviceInfo deviceInfo;
+    DeviceEnumerator deviceEnumerator;
+    DeviceInfo deviceInfo;
 
-    unsigned int deviceCount = deviceEnumerator.getDeviceCount();
+    unsigned int playbackDeviceCount = deviceEnumerator.getDeviceCount(DeviceType::PLAYBACK);
 
-    std::cout << "Device count: " << deviceCount << '\n';
+    std::cout << "--------------------------------------------------------------------------------" << '\n';
+
+    std::cout << "Playback device count: " << playbackDeviceCount << '\n';
 
     // Display device details if successfully probed
-    for (unsigned int i = 0; i < deviceCount; i++) {
-        deviceInfo = deviceEnumerator.getDeviceInfo(i);
+    for (unsigned int i = 0; i < playbackDeviceCount; i++) {
+        deviceInfo = deviceEnumerator.getDeviceInfo(i, DeviceType::PLAYBACK);
+
+        if (deviceInfo.isValid) {
+            std::cout << "--------------------------------------------------------------------------------" << '\n';
+            std::cout << "Name: " << deviceInfo.name << '\n';
+            std::cout << "Description: " << deviceInfo.description << '\n';
+        }
+    }
+
+    unsigned int captureDeviceCount = deviceEnumerator.getDeviceCount(DeviceType::CAPTURE);
+
+    std::cout << "--------------------------------------------------------------------------------" << '\n';
+
+    std::cout << "Capture device count: " << captureDeviceCount << '\n';
+
+    // Display device details if successfully probed
+    for (unsigned int i = 0; i < captureDeviceCount; i++) {
+        deviceInfo = deviceEnumerator.getDeviceInfo(i, DeviceType::CAPTURE);
 
         if (deviceInfo.isValid) {
             std::cout << "--------------------------------------------------------------------------------" << '\n';
