@@ -7,7 +7,7 @@ int main() {
     BriskAudio::DeviceInfo deviceInfo;
 
     // Display device details if successfully probed
-    for (int i = 0; i < deviceEnumerator.getDeviceCount(); i++) {
+    for (unsigned int i = 0; i < deviceEnumerator.getDeviceCount(); i++) {
         deviceInfo = deviceEnumerator.getDeviceInfo(i);
 
         if (deviceInfo.isValid) {
