@@ -1,44 +1,26 @@
-#ifdef __linux__
 #include "BriskAudio.hpp"
-
 #include <alsa/asoundlib.h>
 
 static char** hints;
 
 namespace BriskAudio {
-    unsigned int DeviceInfoCollection::getDeviceCount(DeviceType deviceType) {
+    unsigned int DeviceInfoCollection::getDeviceCount(DeviceType aType) {
         if (snd_device_name_hint(-1, "pcm", (void***) &hints) != 0) {
             return 0;
         }
 
-        unsigned int deviceCount = 0;
+        unsigned int count = 0;
 
         for (char** n = hints; *n != NULL; n++) {
-            deviceCount++;
+            count++;
         }
 
-        return deviceCount;
+        return count;
     }
 
-    DeviceInfo DeviceInfoCollection::getDeviceInfo(unsigned int i, DeviceType deviceType) {
+    DeviceInfo DeviceInfoCollection::getDeviceInfo(unsigned int aIndex, DeviceType aType) {
         DeviceInfo temp;
-
-        char* temp_name;
-        char* temp_description;
-
-        temp_name = snd_device_name_get_hint(hints[i], "NAME");
-        temp_description = snd_device_name_get_hint(hints[i], "DESC");
-
-        if (temp_name == NULL || temp_description == NULL) {
-            return DeviceInfo();
-        }
-
-        temp.name = temp_name;
-        temp.description = temp_description;
-
-        temp.isValid = true;
 
         return temp;
     }
 }
-#endif
