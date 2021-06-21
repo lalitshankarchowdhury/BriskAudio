@@ -2,50 +2,29 @@
 #include <string>
 
 namespace BriskAudio {
-    enum class BufferFormat {
-        U_INT_8,
-        S_INT_16,
-        S_INT_24,
-        S_INT_32,
-        FLOAT_32,
-        FLOAT_64
+    enum class Exit {
+        SUCCESS,
+        FAILURE
     };
 
     enum class DeviceType {
-        CAPTURE,
         PLAYBACK,
-        ALL
-    };
-
-    struct Limits {
-        unsigned int min;
-        unsigned int max;
+        CAPTURE
     };
 
     struct DeviceInfo {
-        bool isValid;
+        bool isValid = false;
         std::string name;
+        std::string ID;
         std::string description;
-        DeviceType deviceType;
-        Limits inputChannels;
-        Limits outputChannels;
-        Limits duplexChannels;
-        std::vector<unsigned int> supportedSampleRates;
-        Limits bufferSizeInFrames;
-        BufferFormat supportedBufferFormats;
-
-        DeviceInfo() {
-            isValid = false;
-        }
+        DeviceType type;
     };
 
     struct DeviceInfoCollection {
-        unsigned int getDeviceCount(DeviceType deviceType);
-        DeviceInfo getDeviceInfo(unsigned int i, DeviceType deviceType);
+        unsigned int getDeviceCount(DeviceType aType);
+        DeviceInfo getDeviceInfo(unsigned int aIndex, DeviceType aType);
     };
-    
-    struct Device {
-        void* nativeDeviceHandle;
-        DeviceInfo info;
-    };
+
+    Exit init();
+    void quit();
 }
