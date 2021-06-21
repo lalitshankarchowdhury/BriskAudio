@@ -1,134 +1,118 @@
 #ifdef _WIN32
 #include "BriskAudio.hpp"
-
 #include <atlstr.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
-static HRESULT result;
-static IMMDeviceEnumerator *enumerator = NULL;
-static IMMDeviceCollection *collection = NULL;
+#define EXIT_ON_ERROR(hres)  \
+              if (FAILED(hres)) { hres = S_OK; goto Exit; }
+#define SAFE_RELEASE(punk)  \
+              if ((punk) != NULL)  \
+                { (punk)->Release(); (punk) = NULL; }
 
 namespace BriskAudio {
-	unsigned int DeviceInfoCollection::getDeviceCount(DeviceType deviceType) {
-		HRESULT result;
-		IMMDeviceEnumerator *enumerator = NULL;
-		IMMDeviceCollection *collection = NULL;
-		EDataFlow dataFlow;
+    Exit init() {
+        HRESULT result = S_OK;
 
-		result = CoInitialize(NULL);
+        result = CoInitialize(NULL);
+        EXIT_ON_ERROR(result)
+    
+    Exit:
+        return Exit::SUCCESS;
+    }
 
-		if (FAILED(result)) {
-			return 0;
-		}		
+    unsigned int DeviceInfoCollection::getDeviceCount(DeviceType aType) {
+        HRESULT result = S_OK;
+        IMMDeviceEnumerator* enumerator = NULL;
+        IMMDeviceCollection* collection = NULL;
+        EDataFlow flow;
+        unsigned int count = 0;
 
-		result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void **)&enumerator);
+        result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &enumerator);
+        EXIT_ON_ERROR(result)
 
-		if (FAILED(result)) {
-			return 0;
-		}
+        flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
 
-		if (deviceType == DeviceType::PLAYBACK) {
-			dataFlow = eRender;
-		} else if (deviceType == DeviceType::CAPTURE) {
-			dataFlow = eCapture;
-		} else {
-			dataFlow = eAll;
-		}
+        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &collection);
+        EXIT_ON_ERROR(result)
 
-		result = enumerator->EnumAudioEndpoints(dataFlow, DEVICE_STATEMASK_ALL, &collection);
+        result = collection->GetCount(&count);
+        EXIT_ON_ERROR(result)
 
-		if (FAILED(result)) {
-			return 0;
-		}
+    Exit:
+        SAFE_RELEASE(enumerator)
+        SAFE_RELEASE(collection)
 
-		unsigned int deviceCount = 0;
+        return count;
+    }
 
-		result = collection->GetCount(&deviceCount);
+    DeviceInfo DeviceInfoCollection::getDeviceInfo(unsigned int aIndex, DeviceType aType) {
+        HRESULT result = S_OK;
+        IMMDevice* pDevice = NULL;
+        IMMDeviceEnumerator* enumerator = NULL;
+        IMMDeviceCollection* collection = NULL;
+        
+        EDataFlow flow;
+        unsigned int count;
+        DeviceInfo temp;
+        IPropertyStore *pStore = NULL;
+        PROPVARIANT varName;
+        LPWSTR pwszID = NULL;
 
-		if (FAILED(result)) {
-			return 0;
-		}
+        result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &enumerator);
+        EXIT_ON_ERROR(result)
 
-		CoUninitialize();
+        flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
 
-		return deviceCount;
-	}
+        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATEMASK_ALL, &collection);
+        EXIT_ON_ERROR(result)
 
-	DeviceInfo DeviceInfoCollection::getDeviceInfo(unsigned int i, DeviceType deviceType) {
-		IMMDevice *device = NULL;
-		DeviceInfo temp;
-		IPropertyStore *store = NULL;
-		PROPVARIANT varName;
-		EDataFlow dataFlow;
+        result = collection->GetCount(&count);
+        EXIT_ON_ERROR(result)
 
-		result = CoInitialize(NULL);
+        if (aIndex < 0 || aIndex >= count) {
+            goto Exit;
+        }
 
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
+        result = collection->Item(aIndex, &pDevice);
+        EXIT_ON_ERROR(result)
 
-		result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void **)&enumerator);
+        result = pDevice->OpenPropertyStore(STGM_READ, &pStore);
+        EXIT_ON_ERROR(result)
 
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
+        PropVariantInit(&varName);
 
-		if (deviceType == DeviceType::PLAYBACK) {
-			dataFlow = eRender;
+        result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
+        EXIT_ON_ERROR(result)
 
-			temp.deviceType = DeviceType::PLAYBACK;
-		} else if (deviceType == DeviceType::CAPTURE) {
-			dataFlow = eCapture;
+        temp.name = CW2A(varName.pwszVal);
 
-			temp.deviceType = DeviceType::CAPTURE;
-		} else {
-			dataFlow = eAll;
+        result = pDevice->GetId(&pwszID);
+        EXIT_ON_ERROR(result)
 
-			temp.deviceType = DeviceType::ALL;
-		}
+        temp.ID = CW2A(pwszID);
 
-		result = enumerator->EnumAudioEndpoints(dataFlow, DEVICE_STATEMASK_ALL, &collection);
+        result = PropVariantClear(&varName);
 
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
+        result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
+        EXIT_ON_ERROR(result)
 
-		result = collection->Item(i, &device);
+        temp.description = CW2A(varName.pwszVal);
 
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
+        temp.isValid = true;
 
-		result = device->OpenPropertyStore(STGM_READ, &store);
+    Exit:
+        CoTaskMemFree(pwszID);
+        SAFE_RELEASE(enumerator)
+        SAFE_RELEASE(collection)
+        SAFE_RELEASE(pDevice)
+        SAFE_RELEASE(pStore)
 
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
+        return temp;
+    }
 
-		PropVariantInit(&varName);
-
-		result = store->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
-
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
-
-		temp.name = CW2A(varName.pwszVal);
-
-		result = store->GetValue(PKEY_Device_DeviceDesc, &varName);
-
-		if (FAILED(result)) {
-			return DeviceInfo();
-		}
-
-		temp.description = CW2A(varName.pwszVal);
-
-		CoUninitialize();
-
-		temp.isValid = true;
-
-		return temp;
-	}
+    void quit() {
+        CoUninitialize();
+    }
 }
 #endif
