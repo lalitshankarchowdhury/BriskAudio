@@ -5,6 +5,10 @@
 using namespace BriskAudio;
 
 int main() {
+    if (init() == Exit::FAILURE) {
+        return EXIT_FAILURE;
+    }
+
     DeviceInfoCollection collection;
     DeviceInfo info;
 
@@ -18,6 +22,7 @@ int main() {
 
         if (info.isValid) {
             std::cout << "Name: " << info.name << '\n';
+            std::cout << "ID: " << info.ID << '\n';
             std::cout << "Description: " << info.description << "\n\n";
         }
     }
@@ -32,9 +37,14 @@ int main() {
 
         if (info.isValid) {
             std::cout << "Name: " << info.name << '\n';
+            std::cout << "ID: " << info.ID << '\n';
             std::cout << "Description: " << info.description << "\n\n";
         }
     }
 
     std::getchar();
+
+    quit();
+
+    return EXIT_SUCCESS;
 }
