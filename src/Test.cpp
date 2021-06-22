@@ -27,6 +27,8 @@ int main() {
         if (info.isValid) {
             std::cout << GREEN << info.name << RESET << '\n';
             std::cout << info.description << '\n';
+            std::cout << info.numChannels << " channels\n";
+            std::cout << info.defaultSampleRate << " Hz\n";
             std::cout << "--------------------------------------------------------------------------------\n";
         }
     }
@@ -43,6 +45,8 @@ int main() {
         if (info.isValid) {
             std::cout << GREEN << info.name << RESET << '\n';
             std::cout << info.description << '\n';
+            std::cout << info.numChannels << " channels\n";
+            std::cout << info.defaultSampleRate << " Hz\n";
             std::cout << "--------------------------------------------------------------------------------\n";
         }
     }
