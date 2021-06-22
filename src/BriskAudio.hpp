@@ -17,6 +17,8 @@ namespace BriskAudio {
         std::string name;
         std::string description;
         DeviceType type;
+        unsigned int numChannels;
+        unsigned int defaultSampleRate;
     };
 
     struct DeviceInfoCollection {
