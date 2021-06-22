@@ -15,7 +15,6 @@ namespace BriskAudio {
     struct DeviceInfo {
         bool isValid = false;
         std::string name;
-        std::string ID;
         std::string description;
         DeviceType type;
     };
