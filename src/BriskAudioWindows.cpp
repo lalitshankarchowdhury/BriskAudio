@@ -7,14 +7,14 @@
 #define EXIT_ON_ERROR(hres)  \
               if (FAILED(hres)) { hres = S_OK; goto Exit; }
 #define SAFE_RELEASE(punk)  \
-              if ((punk) != NULL)  \
-                { (punk)->Release(); (punk) = NULL; }
+              if ((punk) != nullptr)  \
+                { (punk)->Release(); (punk) = nullptr; }
 
 namespace BriskAudio {
     Exit init() {
         HRESULT result = S_OK;
 
-        result = CoInitialize(NULL);
+        result = CoInitialize(nullptr);
         EXIT_ON_ERROR(result)
     
     Exit:
@@ -23,12 +23,12 @@ namespace BriskAudio {
 
     unsigned int DeviceInfoCollection::getDeviceCount(DeviceType aType) {
         HRESULT result = S_OK;
-        IMMDeviceEnumerator* enumerator = NULL;
-        IMMDeviceCollection* collection = NULL;
+        IMMDeviceEnumerator* enumerator = nullptr;
+        IMMDeviceCollection* collection = nullptr;
         EDataFlow flow;
         unsigned int count = 0;
 
-        result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &enumerator);
+        result = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &enumerator);
         EXIT_ON_ERROR(result)
 
         flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
@@ -48,18 +48,17 @@ namespace BriskAudio {
 
     DeviceInfo DeviceInfoCollection::getDeviceInfo(unsigned int aIndex, DeviceType aType) {
         HRESULT result = S_OK;
-        IMMDevice* pDevice = NULL;
-        IMMDeviceEnumerator* enumerator = NULL;
-        IMMDeviceCollection* collection = NULL;
+        IMMDevice* pDevice = nullptr;
+        IMMDeviceEnumerator* enumerator = nullptr;
+        IMMDeviceCollection* collection = nullptr;
         
         EDataFlow flow;
         unsigned int count;
         DeviceInfo temp;
-        IPropertyStore *pStore = NULL;
+        IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
-        LPWSTR pwszID = NULL;
 
-        result = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &enumerator);
+        result = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**) &enumerator);
         EXIT_ON_ERROR(result)
 
         flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
@@ -87,17 +86,14 @@ namespace BriskAudio {
 
         temp.name = CW2A(varName.pwszVal);
 
-        result = pDevice->GetId(&pwszID);
-        EXIT_ON_ERROR(result)
-
-        temp.ID = CW2A(pwszID);
-
         result = PropVariantClear(&varName);
 
         result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
         EXIT_ON_ERROR(result)
 
         temp.description = CW2A(varName.pwszVal);
+
+        temp.Type = aType;
 
         temp.isValid = true;
 
