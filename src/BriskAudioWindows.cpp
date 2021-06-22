@@ -33,7 +33,7 @@ namespace BriskAudio {
 
         flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
 
-        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &collection);
+        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATEMASK_ALL, &collection);
         EXIT_ON_ERROR(result)
 
         result = collection->GetCount(&count);
@@ -93,12 +93,11 @@ namespace BriskAudio {
 
         temp.description = CW2A(varName.pwszVal);
 
-        temp.Type = aType;
+        temp.type = aType;
 
         temp.isValid = true;
 
     Exit:
-        CoTaskMemFree(pwszID);
         SAFE_RELEASE(enumerator)
         SAFE_RELEASE(collection)
         SAFE_RELEASE(pDevice)
