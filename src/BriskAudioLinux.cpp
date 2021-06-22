@@ -45,6 +45,8 @@ namespace BriskAudio {
         char* IOID;
         DeviceInfo temp;
 
+        temp.type = aType;
+
         const char* filter = (aType == DeviceType::PLAYBACK)? "Output" : "Input";
         
         for (void** n = hints; *n != NULL; n++) {
