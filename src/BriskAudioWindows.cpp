@@ -12,13 +12,31 @@
 
 namespace BriskAudio {
     Exit init() {
-        HRESULT result = S_OK;
+        HANDLE hConsoleHandle = NULL;
+        DWORD consoleMode;
 
-        result = CoInitialize(nullptr);
-        EXIT_ON_ERROR(result)
-    
-    Exit:
-        return Exit::SUCCESS;
+        hConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+        if (hConsoleHandle == NULL) {
+            return Exit::FAILURE;
+        }
+
+        if (!GetConsoleMode(hConsoleHandle, &consoleMode)) {
+            return Exit::FAILURE;
+        }
+
+        // Allow colored output
+        consoleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+        if (!SetConsoleMode(hConsoleHandle, consoleMode)) {
+            return Exit::FAILURE;
+        }
+
+       if (FAILED(CoInitialize(NULL))) {
+           return Exit::FAILURE;
+       }
+
+       return Exit::SUCCESS;
     }
 
     unsigned int DeviceInfoCollection::getDeviceCount(DeviceType aType) {
