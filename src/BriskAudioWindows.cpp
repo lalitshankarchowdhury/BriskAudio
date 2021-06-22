@@ -1,6 +1,7 @@
 #ifdef _WIN32
 #include "BriskAudio.hpp"
 #include <atlstr.h>
+#include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
@@ -51,7 +52,7 @@ namespace BriskAudio {
 
         flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
 
-        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATEMASK_ALL, &collection);
+        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &collection);
         EXIT_ON_ERROR(result)
 
         result = collection->GetCount(&count);
@@ -69,10 +70,12 @@ namespace BriskAudio {
         IMMDevice* pDevice = nullptr;
         IMMDeviceEnumerator* enumerator = nullptr;
         IMMDeviceCollection* collection = nullptr;
+        IAudioClient* pClient = nullptr;
+        WAVEFORMATEX* pFormat;
         
         EDataFlow flow;
         unsigned int count;
-        DeviceInfo temp;
+        DeviceInfo info;
         IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
 
@@ -81,7 +84,7 @@ namespace BriskAudio {
 
         flow = (aType == DeviceType::PLAYBACK)? eRender : eCapture;
 
-        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATEMASK_ALL, &collection);
+        result = enumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &collection);
         EXIT_ON_ERROR(result)
 
         result = collection->GetCount(&count);
@@ -102,26 +105,37 @@ namespace BriskAudio {
         result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
         EXIT_ON_ERROR(result)
 
-        temp.name = CW2A(varName.pwszVal);
+        info.name = CW2A(varName.pwszVal);
 
         result = PropVariantClear(&varName);
 
         result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
         EXIT_ON_ERROR(result)
 
-        temp.description = CW2A(varName.pwszVal);
+        info.description = CW2A(varName.pwszVal);
 
-        temp.type = aType;
+        info.type = aType;
 
-        temp.isValid = true;
+        result = pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**) &pClient);
+        EXIT_ON_ERROR(result)
+
+        result = pClient->GetMixFormat(&pFormat);
+        EXIT_ON_ERROR(result)
+
+        info.numChannels = pFormat->nChannels;
+
+        info.defaultSampleRate = pFormat->nSamplesPerSec;
+
+        info.isValid = true;
 
     Exit:
         SAFE_RELEASE(enumerator)
         SAFE_RELEASE(collection)
         SAFE_RELEASE(pDevice)
         SAFE_RELEASE(pStore)
+        SAFE_RELEASE(pClient)
 
-        return temp;
+        return info;
     }
 
     void quit() {
