@@ -71,6 +71,8 @@ namespace BriskAudio {
                 temp.name = NAME;
                 temp.description = DESC;
 
+                temp.type = aType;
+
                 temp.isValid = true;
 
                 if (NAME != nullptr) {
