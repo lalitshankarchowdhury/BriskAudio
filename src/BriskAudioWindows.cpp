@@ -11,25 +11,25 @@
               if ((punk) != nullptr)  \
                 { (punk)->Release(); (punk) = nullptr; }
 
+static HANDLE hConsoleHandle = NULL;
+static DWORD defaultConsoleMode; 
+
 namespace BriskAudio {
     Exit init() {
-        HANDLE hConsoleHandle = NULL;
-        DWORD consoleMode;
-
         hConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
         if (hConsoleHandle == NULL) {
             return Exit::FAILURE;
         }
 
-        if (!GetConsoleMode(hConsoleHandle, &consoleMode)) {
+        if (!GetConsoleMode(hConsoleHandle, &defaultConsoleMode)) {
             return Exit::FAILURE;
         }
 
         // Allow colored output
-        consoleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        defaultConsoleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
 
-        if (!SetConsoleMode(hConsoleHandle, consoleMode)) {
+        if (!SetConsoleMode(hConsoleHandle, defaultConsoleMode)) {
             return Exit::FAILURE;
         }
 
@@ -71,7 +71,7 @@ namespace BriskAudio {
         IMMDeviceEnumerator* enumerator = nullptr;
         IMMDeviceCollection* collection = nullptr;
         IAudioClient* pClient = nullptr;
-        WAVEFORMATEX* pFormat;
+        WAVEFORMATEX* pFormat = nullptr;
         
         EDataFlow flow;
         unsigned int count;
@@ -129,6 +129,7 @@ namespace BriskAudio {
         info.isValid = true;
 
     Exit:
+        CoTaskMemFree(pFormat);
         SAFE_RELEASE(enumerator)
         SAFE_RELEASE(collection)
         SAFE_RELEASE(pDevice)
@@ -140,6 +141,9 @@ namespace BriskAudio {
 
     void quit() {
         CoUninitialize();
+
+        // Reset console mode
+        SetConsoleMode(hConsoleHandle, defaultConsoleMode);
     }
 }
 #endif
