@@ -62,7 +62,7 @@ namespace BriskAudio {
             }
 
             // If PCM device is found
-            if ((count- 1) == aIndex) {
+            if ((count - 1) == aIndex) {
                 NAME = snd_device_name_get_hint(*n, "NAME");
                 DESC = snd_device_name_get_hint(*n, "DESC");
 
