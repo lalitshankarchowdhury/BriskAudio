@@ -1,4 +1,3 @@
-#include <vector>
 #include <string>
 
 namespace BriskAudio {
@@ -6,10 +5,19 @@ namespace BriskAudio {
         SUCCESS,
         FAILURE
     };
-
+    
     enum class DeviceType {
         PLAYBACK,
         CAPTURE
+    };
+
+    enum class BufferFormat {
+        U_INT_8,
+        S_INT_16,
+        S_INT_24,
+        S_INT_32,
+        FLOAT_32,
+        FLOAT_64
     };
 
     struct DeviceInfo {
@@ -18,7 +26,7 @@ namespace BriskAudio {
         std::string description;
         DeviceType type;
         unsigned int numChannels;
-        unsigned int defaultSampleRate;
+        unsigned long defaultSampleRate;
     };
 
     struct DeviceInfoCollection {
