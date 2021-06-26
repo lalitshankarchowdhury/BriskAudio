@@ -26,6 +26,7 @@ int main() {
             std::cout << endpoint.description << '\n';
             std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
 
+            // Release OS specific endpoint handle
             endpoint.releaseNativeHandle();
         }
     }
@@ -40,6 +41,7 @@ int main() {
             std::cout << endpoint.description << '\n';
             std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
 
+            // Release OS specific endpoint handle
             endpoint.releaseNativeHandle();
         }
     }
