@@ -6,7 +6,8 @@
 
 using namespace BriskAudio;
 
-int main() {
+int main()
+{
     if (init() == Exit::FAILURE) {
         return EXIT_FAILURE;
     }
@@ -18,7 +19,7 @@ int main() {
 
     enumerator.type = EndpointType::PLAYBACK;
 
-    std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
+    std::cout << GREEN << "--------------------------------------------------------------------------------\n" << RESET;
 
     for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
         endpoint = enumerator.getEndpoint(i);
@@ -26,7 +27,7 @@ int main() {
         if (endpoint.isValid) {
             std::cout << endpoint.cardName << '\n';
             std::cout << endpoint.description << '\n';
-            std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
+            std::cout << GREEN << "--------------------------------------------------------------------------------\n" << RESET;
 
             // Release OS specific endpoint handle
             endpoint.releaseNativeHandle();
@@ -41,7 +42,7 @@ int main() {
         if (endpoint.isValid) {
             std::cout << endpoint.cardName << '\n';
             std::cout << endpoint.description << '\n';
-            std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
+            std::cout << GREEN << "--------------------------------------------------------------------------------\n" << RESET;
 
             // Release OS specific endpoint handle
             endpoint.releaseNativeHandle();
