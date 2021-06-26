@@ -10,7 +10,5 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: clang-format Code Formatter
-      uses: IvanLudvig/clang-format-action@v1.0
-      with:
-        myInput: world
+    - name: git-clang-format lint
+      uses: yshui/git-clang-format-lint@v1.3
