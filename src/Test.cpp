@@ -13,36 +13,42 @@ int main() {
 
     // List available endpoints
 
-    EndpointInfoCollection collection(EndpointType::PLAYBACK);
-    EndpointInfo info;
+    EndpointEnumerator enumerator(EndpointType::PLAYBACK);
+    Endpoint endpoint;
 
     std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
 
-    for (unsigned int i = 0; i < collection.getEndpointCount(); i++) {
-        info = collection.getEndpointInfo(i);
+    for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
+        endpoint = enumerator.getEndpoint(i);
 
-        if (info.isValid) {
-            std::cout << info.cardName << '\n';
-            std::cout << info.description << '\n';
+        if (endpoint.isValid) {
+            std::cout << endpoint.cardName << '\n';
+            std::cout << endpoint.description << '\n';
             std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
+
+            endpoint.releaseNativeHandle();
         }
     }
 
-    collection.setEndpointType(EndpointType::CAPTURE);
+    enumerator.setEndpointType(EndpointType::CAPTURE);
 
-    for (unsigned int i = 0; i < collection.getEndpointCount(); i++) {
-        info = collection.getEndpointInfo(i);
+    for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
+        endpoint = enumerator.getEndpoint(i);
 
-        if (info.isValid) {
-            std::cout << info.cardName << '\n';
-            std::cout << info.description << '\n';
+        if (endpoint.isValid) {
+            std::cout << endpoint.cardName << '\n';
+            std::cout << endpoint.description << '\n';
             std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
+
+            endpoint.releaseNativeHandle();
         }
     }
 
     std::getchar();
 
-    quit();
+    if (quit() == Exit::FAILURE) {
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
