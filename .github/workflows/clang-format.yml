@@ -10,5 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: git-clang-format lint
-      uses: yshui/git-clang-format-lint@v1.3
+    - name: clang-format action
+      uses: purduesigbots/clang-format-action@1.0.2
+      with:
+        style: Webkit
