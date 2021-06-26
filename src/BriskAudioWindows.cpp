@@ -3,9 +3,8 @@
 #include <atlstr.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
+#include <iostream>
 
-#define EXIT_ON_ERROR(hres)  \
-              if (FAILED(hres)) { hres = S_OK; goto Exit; }
 #define SAFE_RELEASE(punk)  \
               if (punk != nullptr)  \
                 { (punk)->Release(); (punk) = nullptr; }
@@ -44,87 +43,173 @@ namespace BriskAudio {
         return Exit::SUCCESS;
     }
 
-    unsigned int EndpointInfoCollection::getEndpointCount() {
+    void Endpoint::releaseNativeHandle() {
+        if (nativeHandle != nullptr) {
+            ((IMMDevice*) nativeHandle)->Release();
+
+            nativeHandle = nullptr;
+        }
+    }
+
+    unsigned int EndpointEnumerator::getEndpointCount() {
         HRESULT result;
-        EDataFlow flow;
+        EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
         IMMDeviceCollection* pCollection = nullptr;
         unsigned int count = 0;
 
-        flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
-
         result = spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection);
-        EXIT_ON_ERROR(result)
+        if (FAILED(result)) {
+            goto Exit;
+        }
 
         result = pCollection->GetCount(&count);
-        EXIT_ON_ERROR(result)
+        if (FAILED(result)) {
+            goto Exit;
+        }
 
     Exit:
         SAFE_RELEASE(pCollection)
 
-        return count;
+        return count;        
     }
 
-    EndpointInfo EndpointInfoCollection::getEndpointInfo(unsigned int aIndex) {
+    Endpoint EndpointEnumerator::getDefaultEndpoint() {
         HRESULT result;
-        EDataFlow flow;
-        IMMDeviceCollection* pCollection = nullptr;  
+        EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
         IMMDevice* pDevice = nullptr;
         IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
+        Endpoint endpoint;
+
+        result = spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, &pDevice);
+        if (FAILED(result)) {
+            goto Exit;
+        }
+        endpoint.nativeHandle = pDevice;
+
+        result = pDevice->OpenPropertyStore(STGM_READ, &pStore);
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
+
+            goto Exit;
+        }        
+
+        result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
+
+            goto Exit;
+        }
+
+        endpoint.cardName = CW2A(varName.pwszVal);
+
+        result = PropVariantClear(&varName);
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
+
+            goto Exit;
+        }
+
+        result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
+
+            goto Exit;
+        }
+
+        endpoint.description = CW2A(varName.pwszVal);
+
+        endpoint.type = type_;
+
+        endpoint.isValid = true;
+
+    Exit:
+        SAFE_RELEASE(pStore)
+
+        return endpoint;
+    }
+
+    Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex) {
+        HRESULT result;
+        EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
+        IMMDeviceCollection* pCollection = nullptr; 
         unsigned int count;
-        EndpointInfo info;
+        IMMDevice* pDevice = nullptr;
+        IPropertyStore *pStore = nullptr;
+        PROPVARIANT varName;
+        Endpoint endpoint;
 
-        flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
+        result = spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection); 
+        if (FAILED(result)) {
+            goto Exit;
+        }
 
-        result = spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection);
-        EXIT_ON_ERROR(result)
-
-        result = pCollection->GetCount(&count);
-        EXIT_ON_ERROR(result)
+        result = pCollection->GetCount(&count); 
+        if (FAILED(result)) {
+            goto Exit;
+        }
 
         if (aIndex < 0 || aIndex >= count) {
             goto Exit;
         }
 
         result = pCollection->Item(aIndex, &pDevice);
-        EXIT_ON_ERROR(result)
+        if (FAILED(result)) {
+            goto Exit;
+        }
+
+        endpoint.nativeHandle = pDevice;
 
         result = pDevice->OpenPropertyStore(STGM_READ, &pStore);
-        EXIT_ON_ERROR(result)
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
 
-        PropVariantInit(&varName);
+            goto Exit;
+        }        
 
         result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
-        EXIT_ON_ERROR(result)
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
 
-        info.cardName = CW2A(varName.pwszVal);
+            goto Exit;
+        }
+
+        endpoint.cardName = CW2A(varName.pwszVal);
 
         result = PropVariantClear(&varName);
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
+
+            goto Exit;
+        }
 
         result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
-        EXIT_ON_ERROR(result)
+        if (FAILED(result)) {
+            SAFE_RELEASE(pDevice)
 
-        info.description = CW2A(varName.pwszVal);
+            goto Exit;
+        }
 
-        info.type = type_;
+        endpoint.description = CW2A(varName.pwszVal);
 
-        info.isValid = true;
+        endpoint.type = type_;
+
+        endpoint.isValid = true;
 
     Exit:
         SAFE_RELEASE(pStore)
-        SAFE_RELEASE(pDevice)
-        SAFE_RELEASE(pCollection)        
+        SAFE_RELEASE(pCollection)
 
-        return info;
+        return endpoint;
     }
 
-    void quit() {
+    Exit quit() {
         SAFE_RELEASE(spEnumerator)
 
         CoUninitialize();
 
         // Reset console mode
-        SetConsoleMode(shConsoleHandle, sDefaultConsoleMode);
+        return (SetConsoleMode(shConsoleHandle, sDefaultConsoleMode) == TRUE)? Exit::SUCCESS : Exit::FAILURE;
     }
 }
 #endif
