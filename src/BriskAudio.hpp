@@ -29,23 +29,13 @@ namespace BriskAudio {
     };
 
     struct EndpointEnumerator {
-        EndpointEnumerator(EndpointType aType) {
-            type_ = aType;
-        }
-        EndpointType getEndpointType() {
-            return type_;
-        }
-        void setEndpointType(EndpointType aType) {
-            type_ = aType;
-        }
+        EndpointType type;
+
         unsigned int getEndpointCount();
         Endpoint getDefaultEndpoint();
         Endpoint getEndpoint(unsigned int aIndex);
-
-    private:
-        EndpointType type_;
     };
-    
+
     Exit init();
     Exit quit();
 }
