@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 namespace BriskAudio {
@@ -11,15 +13,23 @@ namespace BriskAudio {
         CAPTURE
     };
 
-    struct EndpointInfo {
-        bool isValid = false;
+    struct Endpoint {
+        bool isValid;
+        void* nativeHandle;
         std::string cardName;
         std::string description;
         EndpointType type;
+
+        Endpoint() {
+            isValid = false;
+            nativeHandle = nullptr;
+        }
+
+        void releaseNativeHandle();
     };
 
-    struct EndpointInfoCollection {
-        EndpointInfoCollection(EndpointType aType) {
+    struct EndpointEnumerator {
+        EndpointEnumerator(EndpointType aType) {
             type_ = aType;
         }
         EndpointType getEndpointType() {
@@ -29,12 +39,13 @@ namespace BriskAudio {
             type_ = aType;
         }
         unsigned int getEndpointCount();
-        EndpointInfo getEndpointInfo(unsigned int aIndex);
+        Endpoint getDefaultEndpoint();
+        Endpoint getEndpoint(unsigned int aIndex);
 
     private:
         EndpointType type_;
     };
-
+    
     Exit init();
-    void quit();
+    Exit quit();
 }
