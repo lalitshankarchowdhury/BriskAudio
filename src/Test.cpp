@@ -13,8 +13,10 @@ int main() {
 
     // List available endpoints
 
-    EndpointEnumerator enumerator(EndpointType::PLAYBACK);
+    EndpointEnumerator enumerator;
     Endpoint endpoint;
+
+    enumerator.type = EndpointType::PLAYBACK;
 
     std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
 
@@ -31,7 +33,7 @@ int main() {
         }
     }
 
-    enumerator.setEndpointType(EndpointType::CAPTURE);
+    enumerator.type = EndpointType::CAPTURE;
 
     for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
         endpoint = enumerator.getEndpoint(i);
