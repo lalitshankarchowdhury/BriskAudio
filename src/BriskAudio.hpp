@@ -5,33 +5,34 @@ namespace BriskAudio {
         SUCCESS,
         FAILURE
     };
-    
-    enum class DeviceType {
+
+    enum class EndpointType {
         PLAYBACK,
         CAPTURE
     };
 
-    enum class BufferFormat {
-        U_INT_8,
-        S_INT_16,
-        S_INT_24,
-        S_INT_32,
-        FLOAT_32,
-        FLOAT_64
-    };
-
-    struct DeviceInfo {
+    struct EndpointInfo {
         bool isValid = false;
-        std::string name;
+        std::string cardName;
         std::string description;
-        DeviceType type;
-        unsigned int numChannels;
-        unsigned long defaultSampleRate;
+        EndpointType type;
     };
 
-    struct DeviceInfoCollection {
-        unsigned int getDeviceCount(DeviceType aType);
-        DeviceInfo getDeviceInfo(unsigned int aIndex, DeviceType aType);
+    struct EndpointInfoCollection {
+        EndpointInfoCollection(EndpointType aType) {
+            type_ = aType;
+        }
+        EndpointType getEndpointType() {
+            return type_;
+        }
+        void setEndpointType(EndpointType aType) {
+            type_ = aType;
+        }
+        unsigned int getEndpointCount();
+        EndpointInfo getEndpointInfo(unsigned int aIndex);
+
+    private:
+        EndpointType type_;
     };
 
     Exit init();
