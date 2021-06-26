@@ -3,7 +3,6 @@
 #include <atlstr.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
-#include <iostream>
 
 #define SAFE_RELEASE(punk)  \
               if (punk != nullptr)  \
@@ -76,27 +75,25 @@ namespace BriskAudio {
     Endpoint EndpointEnumerator::getDefaultEndpoint() {
         HRESULT result;
         EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
-        IMMDevice* pDevice = nullptr;
         IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
         Endpoint endpoint;
 
-        result = spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, &pDevice);
+        result = spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**) &endpoint.nativeHandle);
         if (FAILED(result)) {
             goto Exit;
         }
-        endpoint.nativeHandle = pDevice;
 
-        result = pDevice->OpenPropertyStore(STGM_READ, &pStore);
+        result = ((IMMDevice*) endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }        
 
         result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }
@@ -105,14 +102,14 @@ namespace BriskAudio {
 
         result = PropVariantClear(&varName);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }
 
         result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }
@@ -134,7 +131,6 @@ namespace BriskAudio {
         EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
         IMMDeviceCollection* pCollection = nullptr; 
         unsigned int count;
-        IMMDevice* pDevice = nullptr;
         IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
         Endpoint endpoint;
@@ -153,23 +149,21 @@ namespace BriskAudio {
             goto Exit;
         }
 
-        result = pCollection->Item(aIndex, &pDevice);
+        result = pCollection->Item(aIndex, (IMMDevice**) &endpoint.nativeHandle);
         if (FAILED(result)) {
             goto Exit;
         }
 
-        endpoint.nativeHandle = pDevice;
-
-        result = pDevice->OpenPropertyStore(STGM_READ, &pStore);
+        result = ((IMMDevice*) endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }        
 
         result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }
@@ -178,14 +172,14 @@ namespace BriskAudio {
 
         result = PropVariantClear(&varName);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }
 
         result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
         if (FAILED(result)) {
-            SAFE_RELEASE(pDevice)
+            endpoint.releaseNativeHandle();
 
             goto Exit;
         }
