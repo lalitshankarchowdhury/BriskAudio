@@ -13,4 +13,4 @@ jobs:
     - name: clang-format action
       uses: purduesigbots/clang-format-action@1.0.2
       with:
-        style: Webkit
+        style: WebKit
