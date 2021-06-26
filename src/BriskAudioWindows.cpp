@@ -51,18 +51,15 @@ namespace BriskAudio {
     }
 
     unsigned int EndpointEnumerator::getEndpointCount() {
-        HRESULT result;
-        EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
+        EDataFlow flow = (type == EndpointType::PLAYBACK)? eRender : eCapture;
         IMMDeviceCollection* pCollection = nullptr;
         unsigned int count = 0;
 
-        result = spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection);
-        if (FAILED(result)) {
+        if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
             goto Exit;
         }
 
-        result = pCollection->GetCount(&count);
-        if (FAILED(result)) {
+        if (FAILED(pCollection->GetCount(&count))) {
             goto Exit;
         }
 
@@ -73,26 +70,22 @@ namespace BriskAudio {
     }
 
     Endpoint EndpointEnumerator::getDefaultEndpoint() {
-        HRESULT result;
-        EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
+        EDataFlow flow = (type == EndpointType::PLAYBACK)? eRender : eCapture;
         IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
         Endpoint endpoint;
 
-        result = spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**) &endpoint.nativeHandle);
-        if (FAILED(result)) {
+        if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**) &endpoint.nativeHandle))) {
             goto Exit;
         }
 
-        result = ((IMMDevice*) endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore);
-        if (FAILED(result)) {
+        if (FAILED(((IMMDevice*) endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
         }        
 
-        result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
-        if (FAILED(result)) {
+        if (FAILED(pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
@@ -100,15 +93,13 @@ namespace BriskAudio {
 
         endpoint.cardName = CW2A(varName.pwszVal);
 
-        result = PropVariantClear(&varName);
-        if (FAILED(result)) {
+        if (FAILED(PropVariantClear(&varName))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
         }
 
-        result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
-        if (FAILED(result)) {
+        if (FAILED(pStore->GetValue(PKEY_Device_DeviceDesc, &varName))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
@@ -116,7 +107,7 @@ namespace BriskAudio {
 
         endpoint.description = CW2A(varName.pwszVal);
 
-        endpoint.type = type_;
+        endpoint.type = type;
 
         endpoint.isValid = true;
 
@@ -127,21 +118,18 @@ namespace BriskAudio {
     }
 
     Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex) {
-        HRESULT result;
-        EDataFlow flow = (type_ == EndpointType::PLAYBACK)? eRender : eCapture;
+        EDataFlow flow = (type == EndpointType::PLAYBACK)? eRender : eCapture;
         IMMDeviceCollection* pCollection = nullptr; 
         unsigned int count;
         IPropertyStore *pStore = nullptr;
         PROPVARIANT varName;
         Endpoint endpoint;
 
-        result = spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection); 
-        if (FAILED(result)) {
+        if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
             goto Exit;
         }
 
-        result = pCollection->GetCount(&count); 
-        if (FAILED(result)) {
+        if (FAILED(pCollection->GetCount(&count))) {
             goto Exit;
         }
 
@@ -149,20 +137,17 @@ namespace BriskAudio {
             goto Exit;
         }
 
-        result = pCollection->Item(aIndex, (IMMDevice**) &endpoint.nativeHandle);
-        if (FAILED(result)) {
+        if (FAILED(pCollection->Item(aIndex, (IMMDevice**) &endpoint.nativeHandle))) {
             goto Exit;
         }
 
-        result = ((IMMDevice*) endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore);
-        if (FAILED(result)) {
+        if (FAILED(((IMMDevice*) endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
         }        
 
-        result = pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName);
-        if (FAILED(result)) {
+        if (FAILED(pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
@@ -170,15 +155,13 @@ namespace BriskAudio {
 
         endpoint.cardName = CW2A(varName.pwszVal);
 
-        result = PropVariantClear(&varName);
-        if (FAILED(result)) {
+        if (FAILED(PropVariantClear(&varName))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
         }
 
-        result = pStore->GetValue(PKEY_Device_DeviceDesc, &varName);
-        if (FAILED(result)) {
+        if (FAILED(pStore->GetValue(PKEY_Device_DeviceDesc, &varName))) {
             endpoint.releaseNativeHandle();
 
             goto Exit;
@@ -186,7 +169,7 @@ namespace BriskAudio {
 
         endpoint.description = CW2A(varName.pwszVal);
 
-        endpoint.type = type_;
+        endpoint.type = type;
 
         endpoint.isValid = true;
 
