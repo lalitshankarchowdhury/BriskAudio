@@ -10,5 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: clang-format action
-      uses: purduesigbots/clang-format-action@1.0.2
+    - name: clang-format Code Formatter
+      uses: IvanLudvig/clang-format-action@v1.0
+      with:
+        myInput: world
