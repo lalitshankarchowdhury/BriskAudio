@@ -1,5 +1,5 @@
 #include <iostream>
-#include "BriskAudio.hpp"
+#include "../include/BriskAudio.hpp"
 
 #define GREEN "\u001b[32m"
 #define RESET "\u001b[0m"
@@ -11,43 +11,32 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    DeviceInfoCollection collection;
-    DeviceInfo info;
+    // List available endpoints
 
-    unsigned int playbackDeviceCount = collection.getDeviceCount(DeviceType::PLAYBACK);
+    EndpointInfoCollection collection(EndpointType::PLAYBACK);
+    EndpointInfo info;
 
-    std::cout << "--------------------------------------------------------------------------------\n";
-    std::cout << "\nPlayback device count: " << playbackDeviceCount << "\n\n";
-    std::cout << "--------------------------------------------------------------------------------\n";
+    std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
 
-    // Display playback device details if successfully probed
-    for (unsigned int i = 0; i < playbackDeviceCount; i++) {
-        info = collection.getDeviceInfo(i, DeviceType::PLAYBACK);
+    for (unsigned int i = 0; i < collection.getEndpointCount(); i++) {
+        info = collection.getEndpointInfo(i);
 
         if (info.isValid) {
-            std::cout << GREEN << info.name << RESET << '\n';
+            std::cout << info.cardName << '\n';
             std::cout << info.description << '\n';
-            std::cout << info.numChannels << " channels\n";
-            std::cout << info.defaultSampleRate << " Hz\n";
-            std::cout << "--------------------------------------------------------------------------------\n";
+            std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
         }
     }
 
-    unsigned int captureDeviceCount = collection.getDeviceCount(DeviceType::CAPTURE);
+    collection.setEndpointType(EndpointType::CAPTURE);
 
-    std::cout << "\nCapture device count: " << captureDeviceCount << "\n\n";
-    std::cout << "--------------------------------------------------------------------------------\n";
-
-    // Display capture device details if successfully probed
-    for (unsigned int i = 0; i < captureDeviceCount; i++) {
-        info = collection.getDeviceInfo(i, DeviceType::CAPTURE);
+    for (unsigned int i = 0; i < collection.getEndpointCount(); i++) {
+        info = collection.getEndpointInfo(i);
 
         if (info.isValid) {
-            std::cout << GREEN << info.name << RESET << '\n';
+            std::cout << info.cardName << '\n';
             std::cout << info.description << '\n';
-            std::cout << info.numChannels << " channels\n";
-            std::cout << info.defaultSampleRate << " Hz\n";
-            std::cout << "--------------------------------------------------------------------------------\n";
+            std::cout << GREEN <<  "--------------------------------------------------------------------------------\n" << RESET;
         }
     }
 
