@@ -9,3 +9,5 @@ jobs:
     steps:
       - name: C/C++ code linter (clang-tidy, clang-format, and cppcheck)
         uses: ArtificialAmateur/cpp-linter-action@0.01
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
