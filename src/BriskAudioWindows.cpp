@@ -1,7 +1,7 @@
 #ifdef _WIN32
 #include "../include/BriskAudio.hpp"
-#include <assert.h>
 #include <atlstr.h>
+#include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
@@ -45,6 +45,80 @@ void Endpoint::releaseNativeHandle()
 
         nativeHandle = nullptr;
     }
+}
+
+StreamConfig Endpoint::getSupportedStreamConfigs()
+{
+    IAudioClient* pClient = nullptr;
+    WAVEFORMATEX* pFormat = nullptr;
+    StreamConfig config;
+
+    if (FAILED(((IMMDevice*)nativeHandle)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+        return StreamConfig();
+    }
+
+    if (FAILED(pClient->GetMixFormat(&pFormat))) {
+        pClient->Release();
+
+        return StreamConfig();
+    }
+
+    config.numChannels = pFormat->nChannels;
+    config.sampleRate = pFormat->nSamplesPerSec;
+
+    if (pFormat->wFormatTag == WAVE_FORMAT_PCM) {
+        if (pFormat->wBitsPerSample == 8) {
+            config.format = BufferFormat::U_INT_8;
+        }
+        else if (pFormat->wBitsPerSample == 16) {
+            config.format = BufferFormat::S_INT_16;
+        }
+        else if (pFormat->wBitsPerSample == 24) {
+            config.format = BufferFormat::S_INT_24;
+        }
+        else {
+            config.format = BufferFormat::S_INT_32;
+        }
+    }
+    else {
+        if (pFormat->wBitsPerSample == 32) {
+            config.format = BufferFormat::FLOAT_32;
+        }
+        else {
+            config.format = BufferFormat::FLOAT_64;
+        }
+    }
+
+    config.isValid = true;
+
+    pClient->Release();
+    free(pFormat);
+
+    return config;
+}
+
+Exit Endpoint::openStream(Stream* aStream)
+{
+    if (aStream == nullptr) {
+        return Exit::FAILURE;
+    }
+
+    if (FAILED(((IMMDevice*)nativeHandle)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&aStream->nativeHandle))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
+}
+
+Exit Endpoint::closeStream(Stream* aStream)
+{
+    if (aStream == nullptr) {
+        return Exit::FAILURE;
+    }
+
+    ((IAudioClient*)aStream->nativeHandle)->Release();
+
+    return Exit::SUCCESS;
 }
 
 unsigned int EndpointEnumerator::getEndpointCount()
@@ -112,7 +186,6 @@ Endpoint EndpointEnumerator::getDefaultEndpoint()
     }
 
     endpoint.description = CW2A(varName.pwszVal);
-    endpoint.type = type;
     endpoint.isValid = true;
 
     pStore->Release();
@@ -209,8 +282,16 @@ Exit quit()
 
     CoUninitialize();
 
-    // Reset console mode
-    return (SetConsoleMode(shConsoleHandle, sDefaultConsoleMode) == TRUE) ? Exit::SUCCESS : Exit::FAILURE;
+    if (SetConsoleMode(shConsoleHandle, sDefaultConsoleMode) == TRUE) {
+        shConsoleHandle = nullptr;
+
+        return Exit::SUCCESS;
+    }
+    else {
+        shConsoleHandle = nullptr;
+
+        return Exit::SUCCESS;
+    }
 }
 }
 #endif
