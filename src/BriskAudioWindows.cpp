@@ -1,14 +1,9 @@
 #ifdef _WIN32
-#include "../include/BriskAudio.hpp"
+#include "BriskAudio.hpp"
+#include <assert.h>
 #include <atlstr.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
-
-#define SAFE_RELEASE(punk) \
-    if (punk != nullptr) { \
-        (punk)->Release(); \
-        (punk) = nullptr;  \
-    }
 
 static HANDLE shConsoleHandle = nullptr;
 static DWORD sDefaultConsoleMode;
@@ -17,18 +12,16 @@ static IMMDeviceEnumerator* spEnumerator = nullptr;
 namespace BriskAudio {
 Exit init()
 {
-    shConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    if (shConsoleHandle == nullptr) {
+    if ((shConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE)) == nullptr) {
         return Exit::FAILURE;
     }
 
-    if (!GetConsoleMode(shConsoleHandle, &sDefaultConsoleMode)) {
+    if (GetConsoleMode(shConsoleHandle, &sDefaultConsoleMode) == FALSE) {
         return Exit::FAILURE;
     }
 
     // Enable colored output
-    if (!SetConsoleMode(shConsoleHandle, sDefaultConsoleMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+    if (SetConsoleMode(shConsoleHandle, sDefaultConsoleMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) == FALSE) {
         return Exit::FAILURE;
     }
 
@@ -58,18 +51,19 @@ unsigned int EndpointEnumerator::getEndpointCount()
 {
     EDataFlow flow = (type == EndpointType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
-    unsigned int count = 0;
+    unsigned int count;
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        goto Exit;
+        return 0;
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
-        goto Exit;
+        pCollection->Release();
+
+        return 0;
     }
 
-Exit:
-    SAFE_RELEASE(pCollection)
+    pCollection->Release();
 
     return count;
 }
@@ -82,43 +76,46 @@ Endpoint EndpointEnumerator::getDefaultEndpoint()
     Endpoint endpoint;
 
     if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&endpoint.nativeHandle))) {
-        goto Exit;
+        return Endpoint();
     }
 
     if (FAILED(((IMMDevice*)endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        return Endpoint();
     }
 
     if (FAILED(pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName))) {
+        pStore->Release();
+
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        return Endpoint();
     }
 
     endpoint.cardName = CW2A(varName.pwszVal);
 
     if (FAILED(PropVariantClear(&varName))) {
+        pStore->Release();
+
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        return Endpoint();
     }
 
     if (FAILED(pStore->GetValue(PKEY_Device_DeviceDesc, &varName))) {
+        pStore->Release();
+
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        return Endpoint();
     }
 
     endpoint.description = CW2A(varName.pwszVal);
-
     endpoint.type = type;
-
     endpoint.isValid = true;
 
-Exit:
-    SAFE_RELEASE(pStore)
+    pStore->Release();
 
     return endpoint;
 }
@@ -133,63 +130,82 @@ Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex)
     Endpoint endpoint;
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        goto Exit;
+        return Endpoint();
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     if (aIndex >= count) {
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&endpoint.nativeHandle))) {
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     if (FAILED(((IMMDevice*)endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     if (FAILED(pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName))) {
+        pStore->Release();
+
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     endpoint.cardName = CW2A(varName.pwszVal);
 
     if (FAILED(PropVariantClear(&varName))) {
+        pStore->Release();
+
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     if (FAILED(pStore->GetValue(PKEY_Device_DeviceDesc, &varName))) {
+        pStore->Release();
+
         endpoint.releaseNativeHandle();
 
-        goto Exit;
+        pCollection->Release();
+
+        return Endpoint();
     }
 
     endpoint.description = CW2A(varName.pwszVal);
-
     endpoint.type = type;
-
     endpoint.isValid = true;
 
-Exit:
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pCollection)
+    pStore->Release();
+    pCollection->Release();
 
     return endpoint;
 }
 
 Exit quit()
 {
-    SAFE_RELEASE(spEnumerator)
+    spEnumerator->Release();
+
+    spEnumerator = nullptr;
 
     CoUninitialize();
 
