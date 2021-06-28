@@ -1,5 +1,5 @@
 #ifdef _WIN32
-#include "BriskAudio.hpp"
+#include "../include/BriskAudio.hpp"
 #include <assert.h>
 #include <atlstr.h>
 #include <mmdeviceapi.h>
