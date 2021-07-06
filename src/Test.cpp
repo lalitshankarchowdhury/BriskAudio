@@ -1,4 +1,4 @@
-#include "BriskAudio.hpp"
+#include "../include/BriskAudio.hpp"
 #include <assert.h>
 #include <iostream>
 
