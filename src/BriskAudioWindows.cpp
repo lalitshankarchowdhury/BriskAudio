@@ -56,7 +56,7 @@ Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
         *aCount = 0;
-       
+
         return Exit::FAILURE;
     }
 
@@ -64,7 +64,7 @@ Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
         pCollection->Release();
 
         *aCount = 0;
-       
+
         return Exit::FAILURE;
     }
 
@@ -84,7 +84,7 @@ Exit getDefaultDevice(DeviceType aType, Device* appDevice)
     PROPVARIANT varName;
 
     if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(appDevice)->nativeHandle))) {
-         return Exit::FAILURE;
+        return Exit::FAILURE;
     }
 
     if (FAILED(((IMMDevice*)(appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
@@ -304,6 +304,58 @@ public:
 
     HRESULT STDMETHODCALLTYPE OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
     {
+        IMMDevice* pDevice = nullptr;
+        IPropertyStore* pStore = nullptr;
+        PROPVARIANT varName;
+        std::string deviceName;
+
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        switch (dwNewState) {
+        case DEVICE_STATE_DISABLED:
+        case DEVICE_STATE_NOTPRESENT:
+        case DEVICE_STATE_UNPLUGGED:
+            if (pOnDeviceRemove_ != nullptr) {
+                pOnDeviceRemove_(deviceName, DeviceType::PLAYBACK);
+            }
+
+            break;
+
+        case DEVICE_STATE_ACTIVE:
+            if (pOnDeviceAdd_ != nullptr) {
+                pOnDeviceAdd_(deviceName, DeviceType::PLAYBACK);
+            }
+
+            break;
+        }
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pDevice->Release();
+
         return S_OK;
     }
 
