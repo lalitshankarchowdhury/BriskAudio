@@ -14,18 +14,24 @@ int main()
 
     EndpointEnumerator enumerator;
     Endpoint endpoint;
-    StreamConfig config;
 
-    enumerator.type = EndpointType::PLAYBACK;
+    for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
+        endpoint = enumerator.getEndpoint(i);
 
-    endpoint = enumerator.getDefaultEndpoint();
+        if (endpoint.isValid) {
+            std::cout << GREEN << endpoint.cardName + " - " + endpoint.description << RESET << '\n';
+        }
 
-    if (endpoint.isValid) {
-        config = endpoint.getSupportedStreamConfigs();
+        endpoint.releaseNativeHandle();
+    }
 
-        if (config.isValid) {
-            std::cout << config.numChannels << '\n';
-            std::cout << config.sampleRate << '\n';
+    enumerator.type = EndpointType::CAPTURE;
+
+    for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
+        endpoint = enumerator.getEndpoint(i);
+
+        if (endpoint.isValid) {
+            std::cout << GREEN << endpoint.cardName + " - " + endpoint.description << RESET << '\n';
         }
 
         endpoint.releaseNativeHandle();
