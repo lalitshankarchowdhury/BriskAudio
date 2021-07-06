@@ -1,47 +1,25 @@
+#include "BriskAudio.hpp"
+#include <assert.h>
 #include <iostream>
-#include "../include/BriskAudio.hpp"
 
-#define GREEN "\u001b[32m"
+#define BLUE "\u001b[34m"
 #define RESET "\u001b[0m"
 
 using namespace BriskAudio;
 
-int main()
-{
-    if (init() == Exit::FAILURE) {
-        return EXIT_FAILURE;
-    }
+void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType) {
+    const char* type = (aType == DeviceType::PLAYBACK)? "output" : "input";
 
-    EndpointEnumerator enumerator;
-    Endpoint endpoint;
+    std::cout << BLUE << "Default " << type << " device changed to: " << aDeviceName + '\n' + RESET;
+}
 
-    for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
-        endpoint = enumerator.getEndpoint(i);
+int main() {
+    assert(init() == Exit::SUCCESS);
 
-        if (endpoint.isValid) {
-            std::cout << GREEN << endpoint.cardName + ": " + endpoint.description << RESET << '\n';
-        }
-
-        endpoint.releaseNativeHandle();
-    }
-
-    enumerator.type = EndpointType::CAPTURE;
-
-    for (unsigned int i = 0; i < enumerator.getEndpointCount(); i++) {
-        endpoint = enumerator.getEndpoint(i);
-
-        if (endpoint.isValid) {
-            std::cout << GREEN << endpoint.cardName + ": " + endpoint.description << RESET << '\n';
-        }
-
-        endpoint.releaseNativeHandle();
-    }
+    // Register device event callbacks
+    registerDeviceEventCallbacks(onDefaultDeviceChange);
 
     std::getchar();
 
-    if (quit() == Exit::FAILURE) {
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
+    assert(quit() == Exit::SUCCESS);
 }
