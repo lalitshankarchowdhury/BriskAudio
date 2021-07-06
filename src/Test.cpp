@@ -14,6 +14,7 @@ void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType)
     std::cout << BLUE << "Default " << type << " device changed to: " << aDeviceName + '\n' + RESET;
 }
 
+// TODO: Fix problem
 void onDeviceAdd(std::string aDeviceName, DeviceType aType)
 {
     const char* type = (aType == DeviceType::PLAYBACK) ? "Output" : "Input";
@@ -21,6 +22,7 @@ void onDeviceAdd(std::string aDeviceName, DeviceType aType)
     std::cout << BLUE << type << " device added: " << aDeviceName + '\n' + RESET;
 }
 
+// TODO: Fix problem
 void onDeviceRemove(std::string aDeviceName, DeviceType aType)
 {
     const char* type = (aType == DeviceType::PLAYBACK) ? "Output" : "Input";
