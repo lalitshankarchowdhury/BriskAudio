@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 namespace BriskAudio {
 enum class Exit {
@@ -9,43 +8,30 @@ enum class Exit {
     FAILURE
 };
 
-enum class EndpointType {
+enum class DeviceType {
     PLAYBACK,
     CAPTURE
 };
 
-struct Endpoint {
-    bool isValid;
+struct Device {
+    std::string name;
+    DeviceType type;
     void* nativeHandle;
-    std::string cardName;
-    std::string description;
-    EndpointType type;
 
-    Endpoint()
+    Device()
     {
-        isValid = false;
+        name = "INVALID";
+        type = DeviceType::PLAYBACK;
         nativeHandle = nullptr;
-        cardName = nullptr;
-        description = nullptr;
-        type = EndpointType::PLAYBACK;
     }
 
-    void releaseNativeHandle();
-};
-
-struct EndpointEnumerator {
-    EndpointType type;
-
-    EndpointEnumerator()
-    {
-        type = EndpointType::PLAYBACK;
-    }
-
-    unsigned int getEndpointCount();
-    Endpoint getDefaultEndpoint();
-    Endpoint getEndpoint(unsigned int aIndex);
+    ~Device();
 };
 
 Exit init();
+unsigned int getDeviceCount(DeviceType aType);
+Exit getDefaultDevice(DeviceType aType, Device** appDevice);
+Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice);
+Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType));
 Exit quit();
 }
