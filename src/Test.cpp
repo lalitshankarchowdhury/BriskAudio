@@ -37,6 +37,8 @@ int main()
         endpoint.releaseNativeHandle();
     }
 
+    std::getchar();
+
     if (quit() == Exit::FAILURE) {
         return EXIT_FAILURE;
     }
