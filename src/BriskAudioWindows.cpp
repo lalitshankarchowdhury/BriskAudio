@@ -45,25 +45,32 @@ Exit init()
     return Exit::SUCCESS;
 }
 
-unsigned int getDeviceCount(DeviceType aType)
+Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
 {
+    if (aCount == nullptr) {
+        return Exit::FAILURE;
+    }
+
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
-    unsigned int count = 0;
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        return 0;
+        *aCount = 0;
+       
+        return Exit::FAILURE;
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
         pCollection->Release();
 
-        return 0;
+        *aCount = 0;
+       
+        return Exit::FAILURE;
     }
 
     pCollection->Release();
 
-    return count;
+    return Exit::SUCCESS;
 }
 
 Exit getDefaultDevice(DeviceType aType, Device** appDevice)
@@ -120,7 +127,7 @@ Exit getDefaultDevice(DeviceType aType, Device** appDevice)
     return Exit::SUCCESS;
 }
 
-Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice)
+Exit getDevice(DeviceType aType, unsigned int aIndex, Device** appDevice)
 {
     if (appDevice == nullptr) {
         return Exit::FAILURE;
