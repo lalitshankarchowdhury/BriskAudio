@@ -30,8 +30,8 @@ struct Device {
 
 Exit init();
 Exit getDeviceCount(DeviceType aType, unsigned int* aCount);
-Exit getDefaultDevice(DeviceType aType, Device** appDevice);
-Exit getDevice(DeviceType aType, unsigned int aIndex, Device** appDevice);
+Exit getDefaultDevice(DeviceType aType, Device* appDevice);
+Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice);
 Exit registerDeviceEventCallbacks(
     void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType),
     void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType),
