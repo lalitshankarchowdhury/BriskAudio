@@ -1,5 +1,5 @@
 #ifdef _WIN32
-#include "BriskAudio.hpp"
+#include "../include/BriskAudio.hpp"
 #include <atlstr.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
@@ -60,7 +60,7 @@ Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->GetCount(&count))) {
+    if (FAILED(pCollection->GetCount(aCount))) {
         pCollection->Release();
 
         *aCount = 0;
