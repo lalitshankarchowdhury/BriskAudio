@@ -7,13 +7,15 @@
 
 using namespace BriskAudio;
 
-void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType) {
-    const char* type = (aType == DeviceType::PLAYBACK)? "output" : "input";
+void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType)
+{
+    const char* type = (aType == DeviceType::PLAYBACK) ? "output" : "input";
 
     std::cout << BLUE << "Default " << type << " device changed to: " << aDeviceName + '\n' + RESET;
 }
 
-int main() {
+int main()
+{
     assert(init() == Exit::SUCCESS);
 
     // Register device event callbacks
