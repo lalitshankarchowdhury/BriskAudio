@@ -25,9 +25,9 @@ struct Endpoint {
     {
         isValid = false;
         nativeHandle = nullptr;
-        cardName = "INVALID";
-        description = "INVALID";
-        type = (EndpointType)0;
+        cardName = nullptr;
+        description = nullptr;
+        type = EndpointType::PLAYBACK;
     }
 
     void releaseNativeHandle();
@@ -38,7 +38,7 @@ struct EndpointEnumerator {
 
     EndpointEnumerator()
     {
-        type = (EndpointType)0;
+        type = EndpointType::PLAYBACK;
     }
 
     unsigned int getEndpointCount();
