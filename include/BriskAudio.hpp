@@ -32,6 +32,9 @@ Exit init();
 unsigned int getDeviceCount(DeviceType aType);
 Exit getDefaultDevice(DeviceType aType, Device** appDevice);
 Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice);
-Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType));
+Exit registerDeviceEventCallbacks(
+    void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType),
+    void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType),
+    void (*apOnDeviceRemove)(std::string aDeviceName, DeviceType aType));
 Exit quit();
 }
