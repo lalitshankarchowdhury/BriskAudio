@@ -73,7 +73,7 @@ Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
     return Exit::SUCCESS;
 }
 
-Exit getDefaultDevice(DeviceType aType, Device** appDevice)
+Exit getDefaultDevice(DeviceType aType, Device* appDevice)
 {
     if (appDevice == nullptr) {
         return Exit::FAILURE;
@@ -83,41 +83,25 @@ Exit getDefaultDevice(DeviceType aType, Device** appDevice)
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
 
-    *appDevice = new Device();
-
-    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(*appDevice)->nativeHandle))) {
-        *appDevice = nullptr;
-
-        return Exit::FAILURE;
+    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(appDevice)->nativeHandle))) {
+         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)(*appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
-        delete *appDevice;
-
-        *appDevice = nullptr;
-
+    if (FAILED(((IMMDevice*)(appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         return Exit::FAILURE;
     }
 
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
         pStore->Release();
 
-        delete *appDevice;
-
-        *appDevice = nullptr;
-
         return Exit::FAILURE;
     }
 
-    (*appDevice)->name = CW2A(varName.pwszVal);
-    (*appDevice)->type = aType;
+    (appDevice)->name = CW2A(varName.pwszVal);
+    (appDevice)->type = aType;
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
-
-        delete *appDevice;
-
-        *appDevice = nullptr;
 
         return Exit::FAILURE;
     }
@@ -127,7 +111,7 @@ Exit getDefaultDevice(DeviceType aType, Device** appDevice)
     return Exit::SUCCESS;
 }
 
-Exit getDevice(DeviceType aType, unsigned int aIndex, Device** appDevice)
+Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice)
 {
     if (appDevice == nullptr) {
         return Exit::FAILURE;
@@ -139,18 +123,12 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device** appDevice)
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
 
-    *appDevice = new Device();
-
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        *appDevice = nullptr;
-
         return Exit::FAILURE;
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
         pCollection->Release();
-
-        *appDevice = nullptr;
 
         return Exit::FAILURE;
     }
@@ -158,25 +136,17 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device** appDevice)
     if (aIndex >= count) {
         pCollection->Release();
 
-        *appDevice = nullptr;
+        return Exit::FAILURE;
+    }
+
+    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&(appDevice)->nativeHandle))) {
+        pCollection->Release();
 
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&(*appDevice)->nativeHandle))) {
+    if (FAILED(((IMMDevice*)(appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         pCollection->Release();
-
-        *appDevice = nullptr;
-
-        return Exit::FAILURE;
-    }
-
-    if (FAILED(((IMMDevice*)(*appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
-        delete *appDevice;
-
-        pCollection->Release();
-
-        *appDevice = nullptr;
 
         return Exit::FAILURE;
     }
@@ -184,26 +154,18 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device** appDevice)
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
         pStore->Release();
 
-        delete *appDevice;
-
         pCollection->Release();
-
-        *appDevice = nullptr;
 
         return Exit::FAILURE;
     }
 
-    (*appDevice)->name = CW2A(varName.pwszVal);
-    (*appDevice)->type = aType;
+    (appDevice)->name = CW2A(varName.pwszVal);
+    (appDevice)->type = aType;
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
 
-        delete *appDevice;
-
         pCollection->Release();
-
-        *appDevice = nullptr;
 
         return Exit::FAILURE;
     }
@@ -223,6 +185,8 @@ public:
         _cRef = 1;
 
         pOnDefaultDeviceChange_ = nullptr;
+        pOnDeviceAdd_ = nullptr;
+        pOnDeviceRemove_ = nullptr;
     }
 
     CMMNotificationClient(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType), void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType), void (*apOnDeviceRemove)(std::string aDeviceName, DeviceType aType))
@@ -237,6 +201,8 @@ public:
     ~CMMNotificationClient()
     {
         pOnDefaultDeviceChange_ = nullptr;
+        pOnDeviceAdd_ = nullptr;
+        pOnDeviceRemove_ = nullptr;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
@@ -247,6 +213,10 @@ public:
     ULONG STDMETHODCALLTYPE Release()
     {
         ULONG ulRef = InterlockedDecrement(&_cRef);
+
+        if (ulRef == 0) {
+            delete this;
+        }
 
         return ulRef;
     }
@@ -316,14 +286,18 @@ public:
 
     HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR pwstrDeviceId)
     {
-        pOnDeviceAdd_("Hi!", DeviceType::PLAYBACK);
+        if (pOnDeviceAdd_ != nullptr) {
+            pOnDeviceAdd_("Hi!", DeviceType::PLAYBACK);
+        }
 
         return S_OK;
     };
 
     HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR pwstrDeviceId)
     {
-        pOnDeviceRemove_("Hi!", DeviceType::PLAYBACK);
+        if (pOnDeviceRemove_ != nullptr) {
+            pOnDeviceRemove_("Hi!", DeviceType::PLAYBACK);
+        }
 
         return S_OK;
     }
@@ -361,13 +335,19 @@ Exit quit()
 {
     if (spDeviceId != nullptr) {
         CoTaskMemFree((void*)spDeviceId);
+
+        spDeviceId = nullptr;
     }
 
-    if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(spClient))) {
-        return Exit::FAILURE;
-    }
+    if (spClient != nullptr) {
+        if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(spClient))) {
+            return Exit::FAILURE;
+        }
 
-    delete spClient;
+        delete spClient;
+
+        spClient = nullptr;
+    }
 
     spEnumerator->Release();
 
