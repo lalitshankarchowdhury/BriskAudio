@@ -19,7 +19,7 @@ int main()
         endpoint = enumerator.getEndpoint(i);
 
         if (endpoint.isValid) {
-            std::cout << GREEN << endpoint.cardName + " - " + endpoint.description << RESET << '\n';
+            std::cout << GREEN << endpoint.cardName + ": " + endpoint.description << RESET << '\n';
         }
 
         endpoint.releaseNativeHandle();
@@ -31,7 +31,7 @@ int main()
         endpoint = enumerator.getEndpoint(i);
 
         if (endpoint.isValid) {
-            std::cout << GREEN << endpoint.cardName + " - " + endpoint.description << RESET << '\n';
+            std::cout << GREEN << endpoint.cardName + ": " + endpoint.description << RESET << '\n';
         }
 
         endpoint.releaseNativeHandle();
