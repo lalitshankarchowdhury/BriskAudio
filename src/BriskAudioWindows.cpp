@@ -1,7 +1,6 @@
 #ifdef _WIN32
 #include "../include/BriskAudio.hpp"
 #include <atlstr.h>
-#include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
@@ -47,80 +46,6 @@ void Endpoint::releaseNativeHandle()
     }
 }
 
-StreamConfig Endpoint::getSupportedStreamConfigs()
-{
-    IAudioClient* pClient = nullptr;
-    WAVEFORMATEX* pFormat = nullptr;
-    StreamConfig config;
-
-    if (FAILED(((IMMDevice*)nativeHandle)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
-        return StreamConfig();
-    }
-
-    if (FAILED(pClient->GetMixFormat(&pFormat))) {
-        pClient->Release();
-
-        return StreamConfig();
-    }
-
-    config.numChannels = pFormat->nChannels;
-    config.sampleRate = pFormat->nSamplesPerSec;
-
-    if (pFormat->wFormatTag == WAVE_FORMAT_PCM) {
-        if (pFormat->wBitsPerSample == 8) {
-            config.format = BufferFormat::U_INT_8;
-        }
-        else if (pFormat->wBitsPerSample == 16) {
-            config.format = BufferFormat::S_INT_16;
-        }
-        else if (pFormat->wBitsPerSample == 24) {
-            config.format = BufferFormat::S_INT_24;
-        }
-        else {
-            config.format = BufferFormat::S_INT_32;
-        }
-    }
-    else {
-        if (pFormat->wBitsPerSample == 32) {
-            config.format = BufferFormat::FLOAT_32;
-        }
-        else {
-            config.format = BufferFormat::FLOAT_64;
-        }
-    }
-
-    config.isValid = true;
-
-    pClient->Release();
-    free(pFormat);
-
-    return config;
-}
-
-Exit Endpoint::openStream(Stream* aStream)
-{
-    if (aStream == nullptr) {
-        return Exit::FAILURE;
-    }
-
-    if (FAILED(((IMMDevice*)nativeHandle)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&aStream->nativeHandle))) {
-        return Exit::FAILURE;
-    }
-
-    return Exit::SUCCESS;
-}
-
-Exit Endpoint::closeStream(Stream* aStream)
-{
-    if (aStream == nullptr) {
-        return Exit::FAILURE;
-    }
-
-    ((IAudioClient*)aStream->nativeHandle)->Release();
-
-    return Exit::SUCCESS;
-}
-
 unsigned int EndpointEnumerator::getEndpointCount()
 {
     EDataFlow flow = (type == EndpointType::PLAYBACK) ? eRender : eCapture;
@@ -161,7 +86,6 @@ Endpoint EndpointEnumerator::getDefaultEndpoint()
 
     if (FAILED(pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName))) {
         pStore->Release();
-
         endpoint.releaseNativeHandle();
 
         return Endpoint();
@@ -171,7 +95,6 @@ Endpoint EndpointEnumerator::getDefaultEndpoint()
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
-
         endpoint.releaseNativeHandle();
 
         return Endpoint();
@@ -179,13 +102,13 @@ Endpoint EndpointEnumerator::getDefaultEndpoint()
 
     if (FAILED(pStore->GetValue(PKEY_Device_DeviceDesc, &varName))) {
         pStore->Release();
-
         endpoint.releaseNativeHandle();
 
         return Endpoint();
     }
 
     endpoint.description = CW2A(varName.pwszVal);
+    endpoint.type = type;
     endpoint.isValid = true;
 
     pStore->Release();
@@ -226,7 +149,6 @@ Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex)
 
     if (FAILED(((IMMDevice*)endpoint.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         endpoint.releaseNativeHandle();
-
         pCollection->Release();
 
         return Endpoint();
@@ -234,9 +156,7 @@ Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex)
 
     if (FAILED(pStore->GetValue(PKEY_DeviceInterface_FriendlyName, &varName))) {
         pStore->Release();
-
         endpoint.releaseNativeHandle();
-
         pCollection->Release();
 
         return Endpoint();
@@ -246,9 +166,7 @@ Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex)
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
-
         endpoint.releaseNativeHandle();
-
         pCollection->Release();
 
         return Endpoint();
@@ -256,9 +174,7 @@ Endpoint EndpointEnumerator::getEndpoint(unsigned int aIndex)
 
     if (FAILED(pStore->GetValue(PKEY_Device_DeviceDesc, &varName))) {
         pStore->Release();
-
         endpoint.releaseNativeHandle();
-
         pCollection->Release();
 
         return Endpoint();
