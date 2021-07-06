@@ -10,9 +10,10 @@ static IMMDeviceEnumerator* spEnumerator = nullptr;
 static LPCWSTR spDeviceId = nullptr;
 
 namespace BriskAudio {
-Device::~Device() {
+Device::~Device()
+{
     if (nativeHandle != nullptr) {
-        ((IMMDevice*) nativeHandle)->Release();
+        ((IMMDevice*)nativeHandle)->Release();
     }
 }
 
@@ -44,7 +45,8 @@ Exit init()
     return Exit::SUCCESS;
 }
 
-unsigned int getDeviceCount(DeviceType aType) {
+unsigned int getDeviceCount(DeviceType aType)
+{
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
     unsigned int count = 0;
@@ -64,7 +66,8 @@ unsigned int getDeviceCount(DeviceType aType) {
     return count;
 }
 
-Exit getDefaultDevice(DeviceType aType, Device** appDevice) {
+Exit getDefaultDevice(DeviceType aType, Device** appDevice)
+{
     if (appDevice == nullptr) {
         return Exit::FAILURE;
     }
@@ -75,7 +78,7 @@ Exit getDefaultDevice(DeviceType aType, Device** appDevice) {
 
     *appDevice = new Device();
 
-    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**) &(*appDevice)->nativeHandle))) {
+    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(*appDevice)->nativeHandle))) {
         *appDevice = nullptr;
 
         return Exit::FAILURE;
@@ -117,7 +120,8 @@ Exit getDefaultDevice(DeviceType aType, Device** appDevice) {
     return Exit::SUCCESS;
 }
 
-Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice) {
+Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice)
+{
     if (appDevice == nullptr) {
         return Exit::FAILURE;
     }
@@ -152,7 +156,7 @@ Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice) {
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->Item(aIndex, (IMMDevice**) &(*appDevice)->nativeHandle))) {
+    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&(*appDevice)->nativeHandle))) {
         pCollection->Release();
 
         *appDevice = nullptr;
@@ -203,12 +207,12 @@ Exit getDevice(unsigned int aIndex, DeviceType aType, Device** appDevice) {
     return Exit::SUCCESS;
 }
 
-class CMMNotificationClient : public IMMNotificationClient
-{
+class CMMNotificationClient : public IMMNotificationClient {
     LONG _cRef;
-    
+
 public:
-    CMMNotificationClient() {
+    CMMNotificationClient()
+    {
         _cRef = 1;
 
         pOnDefaultDeviceChange_ = nullptr;
@@ -221,7 +225,8 @@ public:
         pOnDefaultDeviceChange_ = apOnDefaultDeviceChange;
     }
 
-    ~CMMNotificationClient() {
+    ~CMMNotificationClient()
+    {
         pOnDefaultDeviceChange_ = nullptr;
     }
 
@@ -237,22 +242,19 @@ public:
         return ulRef;
     }
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID **ppvInterface)
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID** ppvInterface)
     {
-        if (IID_IUnknown == riid)
-        {
+        if (IID_IUnknown == riid) {
             AddRef();
-    
+
             *ppvInterface = (IUnknown*)this;
         }
-        else if (__uuidof(IMMNotificationClient) == riid)
-        {
+        else if (__uuidof(IMMNotificationClient) == riid) {
             AddRef();
-    
+
             *ppvInterface = (IMMNotificationClient*)this;
         }
-        else
-        {
+        else {
             *ppvInterface = NULL;
 
             return E_NOINTERFACE;
@@ -282,10 +284,10 @@ public:
                 pStore->Release();
                 pDevice->Release();
 
-                return S_FALSE;                
+                return S_FALSE;
             }
 
-            pOnDefaultDeviceChange_(std::string(CW2A(pwstrDeviceId)), (flow == eRender)? DeviceType::PLAYBACK : DeviceType::CAPTURE);
+            pOnDefaultDeviceChange_(std::string(CW2A(pwstrDeviceId)), (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE);
 
             spDeviceId = wcsdup(pwstrDeviceId);
 
@@ -293,7 +295,7 @@ public:
                 pStore->Release();
                 pDevice->Release();
 
-                return S_FALSE;       
+                return S_FALSE;
             }
 
             pStore->Release();
@@ -329,7 +331,8 @@ private:
 
 static CMMNotificationClient* spClient = nullptr;
 
-Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType)) {
+Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType))
+{
     if (apOnDefaultDeviceChange == nullptr) {
         return Exit::FAILURE;
     }
@@ -346,7 +349,7 @@ Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aD
 Exit quit()
 {
     if (spDeviceId != nullptr) {
-        CoTaskMemFree((void*) spDeviceId);
+        CoTaskMemFree((void*)spDeviceId);
     }
 
     if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(spClient))) {
