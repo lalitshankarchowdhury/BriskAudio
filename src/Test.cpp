@@ -35,7 +35,7 @@ int main()
     assert(init() == Exit::SUCCESS);
 
     // Register device event callbacks
-    registerDeviceEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove);
+    assert(registerDeviceEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove) == Exit::SUCCESS);
 
     std::getchar();
 
