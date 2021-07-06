@@ -1,8 +1,8 @@
 #ifdef _WIN32
-#include "../include/BriskAudio.hpp"
 #include <atlstr.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
+#include "../include/BriskAudio.hpp"
 
 static HANDLE shConsoleHandle = nullptr;
 static DWORD sDefaultConsoleMode;
