@@ -218,11 +218,13 @@ public:
         pOnDefaultDeviceChange_ = nullptr;
     }
 
-    CMMNotificationClient(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType))
+    CMMNotificationClient(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType), void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType), void (*apOnDeviceRemove)(std::string aDeviceName, DeviceType aType))
     {
         _cRef = 1;
 
         pOnDefaultDeviceChange_ = apOnDefaultDeviceChange;
+        pOnDeviceAdd_ = apOnDeviceAdd;
+        pOnDeviceRemove_ = apOnDeviceRemove;
     }
 
     ~CMMNotificationClient()
@@ -269,7 +271,7 @@ public:
         IPropertyStore* pStore = nullptr;
         PROPVARIANT varName;
 
-        if (lstrcmpW(spDeviceId, pwstrDeviceId) != 0) {
+        if (lstrcmpW(spDeviceId, pwstrDeviceId) != 0 && pOnDefaultDeviceChange_ != nullptr) {
             if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
                 return S_FALSE;
             }
@@ -287,7 +289,7 @@ public:
                 return S_FALSE;
             }
 
-            pOnDefaultDeviceChange_(std::string(CW2A(pwstrDeviceId)), (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE);
+            pOnDefaultDeviceChange_(std::string(CW2A(varName.pwszVal)), (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE);
 
             spDeviceId = wcsdup(pwstrDeviceId);
 
@@ -307,11 +309,15 @@ public:
 
     HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR pwstrDeviceId)
     {
+        pOnDeviceAdd_("Hi!", DeviceType::PLAYBACK);
+
         return S_OK;
     };
 
     HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR pwstrDeviceId)
     {
+        pOnDeviceRemove_("Hi!", DeviceType::PLAYBACK);
+
         return S_OK;
     }
 
@@ -327,17 +333,15 @@ public:
 
 private:
     void (*pOnDefaultDeviceChange_)(std::string aDeviceName, DeviceType aType);
+    void (*pOnDeviceAdd_)(std::string aDeviceName, DeviceType aType);
+    void (*pOnDeviceRemove_)(std::string aDeviceName, DeviceType aType);
 };
 
 static CMMNotificationClient* spClient = nullptr;
 
-Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType))
+Exit registerDeviceEventCallbacks(void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType), void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType), void (*apOnDeviceRemove)(std::string aDeviceName, DeviceType aType))
 {
-    if (apOnDefaultDeviceChange == nullptr) {
-        return Exit::FAILURE;
-    }
-
-    spClient = new CMMNotificationClient(apOnDefaultDeviceChange);
+    spClient = new CMMNotificationClient(apOnDefaultDeviceChange, apOnDeviceAdd, apOnDeviceRemove);
 
     if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(spClient))) {
         return Exit::FAILURE;
