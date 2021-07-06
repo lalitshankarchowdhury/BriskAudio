@@ -14,12 +14,26 @@ void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType)
     std::cout << BLUE << "Default " << type << " device changed to: " << aDeviceName + '\n' + RESET;
 }
 
+void onDeviceAdd(std::string aDeviceName, DeviceType aType)
+{
+    const char* type = (aType == DeviceType::PLAYBACK) ? "Output" : "Input";
+
+    std::cout << BLUE << type << " device added: " << aDeviceName + '\n' + RESET;
+}
+
+void onDeviceRemove(std::string aDeviceName, DeviceType aType)
+{
+    const char* type = (aType == DeviceType::PLAYBACK) ? "Output" : "Input";
+
+    std::cout << BLUE << type << " device removed: " << aDeviceName + '\n' + RESET;
+}
+
 int main()
 {
     assert(init() == Exit::SUCCESS);
 
     // Register device event callbacks
-    registerDeviceEventCallbacks(onDefaultDeviceChange);
+    registerDeviceEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove);
 
     std::getchar();
 
