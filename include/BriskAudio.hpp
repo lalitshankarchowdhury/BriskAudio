@@ -28,13 +28,13 @@ struct Device {
     ~Device();
 };
 
+extern void (*pOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType);
+extern void (*pOnDeviceAdd)(std::string aDeviceName, DeviceType aType);
+extern void (*pOnDeviceRemove)(std::string aDeviceName, DeviceType aType);
+
 Exit init();
 Exit getDeviceCount(DeviceType aType, unsigned int* aCount);
 Exit getDefaultDevice(DeviceType aType, Device* appDevice);
 Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice);
-Exit registerDeviceEventCallbacks(
-    void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType),
-    void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType),
-    void (*apOnDeviceRemove)(std::string aDeviceName, DeviceType aType));
 Exit quit();
 }
