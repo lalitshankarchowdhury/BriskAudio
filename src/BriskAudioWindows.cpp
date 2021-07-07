@@ -268,7 +268,7 @@ public:
 
             pOnDefaultDeviceChange_(std::string(CW2A(varName.pwszVal)), (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE);
 
-            spDeviceId = wcsdup(pwstrDeviceId);
+            spDeviceId = _wcsdup(pwstrDeviceId);
 
             if (FAILED(PropVariantClear(&varName))) {
                 pStore->Release();
@@ -286,18 +286,86 @@ public:
 
     HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR pwstrDeviceId)
     {
-        if (pOnDeviceAdd_ != nullptr) {
-            pOnDeviceAdd_("Hi!", DeviceType::PLAYBACK);
+        IMMDevice* pDevice = nullptr;
+        IPropertyStore* pStore = nullptr;
+        PROPVARIANT varName;
+        std::string deviceName;
+
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+            return S_FALSE;
         }
+
+        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        if (pOnDeviceAdd_ != nullptr) {
+            pOnDeviceAdd_(deviceName, DeviceType::PLAYBACK);
+        }
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pDevice->Release();
 
         return S_OK;
     };
 
     HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR pwstrDeviceId)
     {
-        if (pOnDeviceRemove_ != nullptr) {
-            pOnDeviceRemove_("Hi!", DeviceType::PLAYBACK);
+        IMMDevice* pDevice = nullptr;
+        IPropertyStore* pStore = nullptr;
+        PROPVARIANT varName;
+        std::string deviceName;
+
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+            return S_FALSE;
         }
+
+        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        if (pOnDeviceRemove_ != nullptr) {
+            pOnDeviceRemove_(deviceName, DeviceType::PLAYBACK);
+        }
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pDevice->Release();
 
         return S_OK;
     }
