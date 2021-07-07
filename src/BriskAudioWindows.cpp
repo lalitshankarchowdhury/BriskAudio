@@ -294,62 +294,65 @@ public:
         EDataFlow flow;
         DeviceType type;
 
-        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
-            return S_FALSE;
-        }
+        if (pOnDeviceAdd_ != nullptr) {
 
-        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            pDevice->Release();
+            if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+                return S_FALSE;
+            }
 
-            return S_FALSE;
-        }
+            if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+                pDevice->Release();
 
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-            pStore->Release();
-            pDevice->Release();
+                return S_FALSE;
+            }
 
-            return S_FALSE;
-        }
+            if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+                pStore->Release();
+                pDevice->Release();
 
-        deviceName = CW2A(varName.pwszVal);
+                return S_FALSE;
+            }
 
-        if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
-            PropVariantClear(&varName);
+            deviceName = CW2A(varName.pwszVal);
 
-            pStore->Release();
-            pDevice->Release();
+            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
+                PropVariantClear(&varName);
 
-            return S_FALSE;
-        }
+                pStore->Release();
+                pDevice->Release();
 
-        if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+                return S_FALSE;
+            }
+
+            if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+                pEndpoint->Release();
+
+                PropVariantClear(&varName);
+
+                pStore->Release();
+                pDevice->Release();
+
+                return S_FALSE;
+            }
+
+            type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
+
+            if (pOnDeviceRemove_ != nullptr) {
+                pOnDeviceRemove_(deviceName, type);
+            }
+
             pEndpoint->Release();
 
-            PropVariantClear(&varName);
+            if (FAILED(PropVariantClear(&varName))) {
+                pStore->Release();
+                pDevice->Release();
+
+                return S_FALSE;
+            }
 
             pStore->Release();
             pDevice->Release();
-
-            return S_FALSE;
         }
-
-        type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-
-        if (pOnDeviceRemove_ != nullptr) {
-            pOnDeviceRemove_(deviceName, type);
-        }
-
-        pEndpoint->Release();
-
-        if (FAILED(PropVariantClear(&varName))) {
-            pStore->Release();
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        pStore->Release();
-        pDevice->Release();
 
         return S_OK;
     };
@@ -364,62 +367,63 @@ public:
         EDataFlow flow;
         DeviceType type;
 
-        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
-            return S_FALSE;
-        }
+        if (pOnDeviceRemove_ != nullptr) {
 
-        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            pDevice->Release();
+            if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+                return S_FALSE;
+            }
 
-            return S_FALSE;
-        }
+            if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+                pDevice->Release();
 
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-            pStore->Release();
-            pDevice->Release();
+                return S_FALSE;
+            }
 
-            return S_FALSE;
-        }
+            if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+                pStore->Release();
+                pDevice->Release();
 
-        deviceName = CW2A(varName.pwszVal);
+                return S_FALSE;
+            }
 
-        if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
-            PropVariantClear(&varName);
+            deviceName = CW2A(varName.pwszVal);
 
-            pStore->Release();
-            pDevice->Release();
+            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
+                PropVariantClear(&varName);
 
-            return S_FALSE;
-        }
+                pStore->Release();
+                pDevice->Release();
 
-        if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+                return S_FALSE;
+            }
+
+            if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+                pEndpoint->Release();
+
+                PropVariantClear(&varName);
+
+                pStore->Release();
+                pDevice->Release();
+
+                return S_FALSE;
+            }
+
+            type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
+
+            pOnDeviceRemove_(deviceName, type);
+
             pEndpoint->Release();
 
-            PropVariantClear(&varName);
+            if (FAILED(PropVariantClear(&varName))) {
+                pStore->Release();
+                pDevice->Release();
+
+                return S_FALSE;
+            }
 
             pStore->Release();
             pDevice->Release();
-
-            return S_FALSE;
         }
-
-        type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-
-        if (pOnDeviceRemove_ != nullptr) {
-            pOnDeviceRemove_(deviceName, type);
-        }
-
-        pEndpoint->Release();
-
-        if (FAILED(PropVariantClear(&varName))) {
-            pStore->Release();
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        pStore->Release();
-        pDevice->Release();
 
         return S_OK;
     }
