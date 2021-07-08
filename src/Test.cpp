@@ -34,7 +34,7 @@ int main()
 {
     assert(init() == Exit::SUCCESS);
 
-    // Register device callbacks
+    // Register device callbacks (optional)
     pOnDefaultDeviceChange = onDefaultDeviceChange;
     pOnDeviceAdd = onDeviceAdd;
     pOnDeviceRemove = onDeviceRemove;
