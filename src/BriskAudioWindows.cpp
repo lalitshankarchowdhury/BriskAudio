@@ -388,25 +388,21 @@ Exit init()
     return Exit::SUCCESS;
 }
 
-Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
+Exit getDeviceCount(DeviceType aType, unsigned int& aCount)
 {
-    if (aCount == nullptr) {
-        return Exit::FAILURE;
-    }
-
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        *aCount = 0;
+        aCount = 0;
 
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->GetCount(aCount))) {
+    if (FAILED(pCollection->GetCount(&aCount))) {
         pCollection->Release();
 
-        *aCount = 0;
+        aCount = 0;
 
         return Exit::FAILURE;
     }
@@ -416,21 +412,17 @@ Exit getDeviceCount(DeviceType aType, unsigned int* aCount)
     return Exit::SUCCESS;
 }
 
-Exit getDefaultDevice(DeviceType aType, Device* appDevice)
+Exit getDefaultDevice(DeviceType aType, Device& appDevice)
 {
-    if (appDevice == nullptr) {
-        return Exit::FAILURE;
-    }
-
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
 
-    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(appDevice)->nativeHandle))) {
+    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(appDevice).nativeHandle))) {
         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)(appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
+    if (FAILED(((IMMDevice*)(appDevice).nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         return Exit::FAILURE;
     }
 
@@ -440,8 +432,8 @@ Exit getDefaultDevice(DeviceType aType, Device* appDevice)
         return Exit::FAILURE;
     }
 
-    (appDevice)->name = CW2A(varName.pwszVal);
-    (appDevice)->type = aType;
+    (appDevice).name = CW2A(varName.pwszVal);
+    (appDevice).type = aType;
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
@@ -454,12 +446,8 @@ Exit getDefaultDevice(DeviceType aType, Device* appDevice)
     return Exit::SUCCESS;
 }
 
-Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice)
+Exit getDevice(DeviceType aType, unsigned int aIndex, Device& appDevice)
 {
-    if (appDevice == nullptr) {
-        return Exit::FAILURE;
-    }
-
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
     unsigned int count;
@@ -482,13 +470,13 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice)
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&(appDevice)->nativeHandle))) {
+    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&(appDevice).nativeHandle))) {
         pCollection->Release();
 
         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)(appDevice)->nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
+    if (FAILED(((IMMDevice*)(appDevice).nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         pCollection->Release();
 
         return Exit::FAILURE;
@@ -502,8 +490,8 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice)
         return Exit::FAILURE;
     }
 
-    (appDevice)->name = CW2A(varName.pwszVal);
-    (appDevice)->type = aType;
+    (appDevice).name = CW2A(varName.pwszVal);
+    (appDevice).type = aType;
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
