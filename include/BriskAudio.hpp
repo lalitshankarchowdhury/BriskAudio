@@ -33,8 +33,8 @@ extern void (*pOnDeviceAdd)(std::string aDeviceName, DeviceType aType);
 extern void (*pOnDeviceRemove)(std::string aDeviceName, DeviceType aType);
 
 Exit init();
-Exit getDeviceCount(DeviceType aType, unsigned int* aCount);
-Exit getDefaultDevice(DeviceType aType, Device* appDevice);
-Exit getDevice(DeviceType aType, unsigned int aIndex, Device* appDevice);
+Exit getDeviceCount(DeviceType aType, unsigned int& aCount);
+Exit getDefaultDevice(DeviceType aType, Device& appDevice);
+Exit getDevice(DeviceType aType, unsigned int aIndex, Device& appDevice);
 Exit quit();
 }
