@@ -418,11 +418,11 @@ Exit getDefaultDevice(DeviceType aType, Device& appDevice)
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
 
-    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&(appDevice).nativeHandle))) {
+    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&appDevice.nativeHandle))) {
         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)(appDevice).nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
+    if (FAILED(((IMMDevice*)appDevice.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         return Exit::FAILURE;
     }
 
@@ -432,8 +432,8 @@ Exit getDefaultDevice(DeviceType aType, Device& appDevice)
         return Exit::FAILURE;
     }
 
-    (appDevice).name = CW2A(varName.pwszVal);
-    (appDevice).type = aType;
+    appDevice.name = CW2A(varName.pwszVal);
+    appDevice.type = aType;
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
@@ -470,13 +470,13 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device& appDevice)
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&(appDevice).nativeHandle))) {
+    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&appDevice.nativeHandle))) {
         pCollection->Release();
 
         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)(appDevice).nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
+    if (FAILED(((IMMDevice*)appDevice.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
         pCollection->Release();
 
         return Exit::FAILURE;
@@ -490,8 +490,8 @@ Exit getDevice(DeviceType aType, unsigned int aIndex, Device& appDevice)
         return Exit::FAILURE;
     }
 
-    (appDevice).name = CW2A(varName.pwszVal);
-    (appDevice).type = aType;
+    appDevice.name = CW2A(varName.pwszVal);
+    appDevice.type = aType;
 
     if (FAILED(PropVariantClear(&varName))) {
         pStore->Release();
