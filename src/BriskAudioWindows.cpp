@@ -5,8 +5,6 @@
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
-static HANDLE shConsoleHandle = nullptr;
-static DWORD sDefaultConsoleMode;
 static IMMDeviceEnumerator* spEnumerator = nullptr;
 static LPCWSTR spDeviceId = nullptr;
 
@@ -356,19 +354,6 @@ Device::~Device()
 
 Exit init()
 {
-    if ((shConsoleHandle = GetStdHandle(STD_OUTPUT_HANDLE)) == nullptr) {
-        return Exit::FAILURE;
-    }
-
-    if (GetConsoleMode(shConsoleHandle, &sDefaultConsoleMode) == FALSE) {
-        return Exit::FAILURE;
-    }
-
-    // Enable colored output
-    if (SetConsoleMode(shConsoleHandle, sDefaultConsoleMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) == FALSE) {
-        return Exit::FAILURE;
-    }
-
     if (FAILED(CoInitialize(nullptr))) {
         return Exit::FAILURE;
     }
@@ -525,16 +510,7 @@ Exit quit()
 
     CoUninitialize();
 
-    if (SetConsoleMode(shConsoleHandle, sDefaultConsoleMode) == TRUE) {
-        shConsoleHandle = nullptr;
-
-        return Exit::SUCCESS;
-    }
-    else {
-        shConsoleHandle = nullptr;
-
-        return Exit::SUCCESS;
-    }
+    return Exit::SUCCESS;
 }
 }
 #endif
