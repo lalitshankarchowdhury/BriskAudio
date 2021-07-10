@@ -1,11 +1,13 @@
 #ifdef _WIN32
 #include "../include/BriskAudio.hpp"
+#include <assert.h>
 #include <atlstr.h>
 #include <Audioclient.h>
 #include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 #include <iostream>
 
+static bool isCoInitialized = false;
 static IMMDeviceEnumerator* spEnumerator = nullptr;
 static LPCWSTR spDeviceId = nullptr;
 
@@ -20,7 +22,7 @@ public:
         _cRef = 1;
     }
 
-    ~CMMNotificationClient()
+    virtual ~CMMNotificationClient()
     {
         pOnDefaultDeviceChange = nullptr;
         pOnDeviceAdd = nullptr;
@@ -360,9 +362,18 @@ Exit initAudio()
         return Exit::FAILURE;
     }
 
-    if (FAILED(CoInitialize(nullptr))) {
-        return Exit::FAILURE;
+    // CoInitialize() must be called only once
+    if (!isCoInitialized) {
+        if (FAILED(CoInitialize(nullptr))) {
+
+            return Exit::FAILURE;
+        }
+
+        isCoInitialized = true;
     }
+
+    // CoUninitialize() must be called only once when the program exits
+    atexit(CoUninitialize);
 
     if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&spEnumerator))) {
         CoUninitialize();
@@ -530,6 +541,11 @@ Exit quitAudio()
         return Exit::FAILURE;
     }
 
+    if (spDeviceId != nullptr) {
+        CoTaskMemFree((void*)spDeviceId);
+        spDeviceId = nullptr;
+    }
+
     if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(spClient))) {
         return Exit::FAILURE;
     }
@@ -537,15 +553,8 @@ Exit quitAudio()
     delete spClient;
     spClient = nullptr;
 
-    if (spDeviceId != nullptr) {
-        CoTaskMemFree((void*)spDeviceId);
-        spDeviceId = nullptr;
-    }
-
     spEnumerator->Release();
     spEnumerator = nullptr;
-
-    CoUninitialize();
 
     return Exit::SUCCESS;
 }
