@@ -339,7 +339,7 @@ public:
     }
 };
 
-static CMMNotificationClient sClient;
+static CMMNotificationClient* spClient = nullptr;
 
 namespace BriskAudio {
 void (*pOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType) = nullptr;
@@ -353,8 +353,13 @@ Device::~Device()
     }
 }
 
-Exit init()
+Exit initAudio()
 {
+    // If BriskAudio is already initialized
+    if (spClient != nullptr && spEnumerator != nullptr) {
+        return Exit::FAILURE;
+    }
+
     if (FAILED(CoInitialize(nullptr))) {
         return Exit::FAILURE;
     }
@@ -365,7 +370,15 @@ Exit init()
         return Exit::FAILURE;
     }
 
-    if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&sClient))) {
+    spClient = new CMMNotificationClient();
+
+    if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(spClient))) {
+        delete spClient;
+        spClient = nullptr;
+
+        spEnumerator->Release();
+        spEnumerator = nullptr;
+
         CoUninitialize();
 
         return Exit::FAILURE;
@@ -395,7 +408,7 @@ unsigned int DeviceEnumerator::deviceCount()
     return count;
 }
 
-Device* DeviceEnumerator::giveDefaultDevice()
+Device* DeviceEnumerator::returnDefaultDevice()
 {
     EDataFlow flow = (type == DeviceType::PLAYBACK) ? eRender : eCapture;
     IPropertyStore* pStore = nullptr;
@@ -438,7 +451,7 @@ Device* DeviceEnumerator::giveDefaultDevice()
     return pDevice;
 }
 
-Device* DeviceEnumerator::giveDevice(unsigned int aIndex)
+Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
 {
     EDataFlow flow = (type == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
@@ -510,20 +523,26 @@ Device* DeviceEnumerator::giveDevice(unsigned int aIndex)
     return pDevice;
 }
 
-Exit quit()
+Exit quitAudio()
 {
-    if (spDeviceId != nullptr) {
-        CoTaskMemFree((void*)spDeviceId);
-
-        spDeviceId = nullptr;
-    }
-
-    if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(&sClient))) {
+    // If BriskAudio is already uninitialized/not initialized
+    if (spClient == nullptr && spEnumerator == nullptr) {
         return Exit::FAILURE;
     }
 
-    spEnumerator->Release();
+    if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(spClient))) {
+        return Exit::FAILURE;
+    }
 
+    delete spClient;
+    spClient = nullptr;
+
+    if (spDeviceId != nullptr) {
+        CoTaskMemFree((void*)spDeviceId);
+        spDeviceId = nullptr;
+    }
+
+    spEnumerator->Release();
     spEnumerator = nullptr;
 
     CoUninitialize();
