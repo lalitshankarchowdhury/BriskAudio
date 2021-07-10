@@ -431,7 +431,7 @@ Exit getDefaultDevice(DeviceType aType, Device& appDevice)
     return Exit::SUCCESS;
 }
 
-Exit getDevice(DeviceType aType, unsigned int aIndex, Device& appDevice)
+Exit getDevice(unsigned int aIndex, DeviceType aType, Device& appDevice)
 {
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
