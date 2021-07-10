@@ -29,6 +29,22 @@ int main()
 {
     assert(init() == Exit::SUCCESS);
 
+    DeviceEnumerator enumerator(DeviceType::PLAYBACK);
+
+    for (unsigned int i = 0; i < enumerator.deviceCount(); i++) {
+        std::unique_ptr<Device> pDevice(enumerator.giveDevice(i));
+
+        std::cout << pDevice->name << '\n';
+    }
+
+    enumerator.type = DeviceType::CAPTURE;
+
+    for (unsigned int i = 0; i < enumerator.deviceCount(); i++) {
+        std::unique_ptr<Device> pDevice(enumerator.giveDevice(i));
+
+        std::cout << pDevice->name << '\n';
+    }
+
     // Register device callbacks (optional)
     pOnDefaultDeviceChange = onDefaultDeviceChange;
     pOnDeviceAdd = onDeviceAdd;
