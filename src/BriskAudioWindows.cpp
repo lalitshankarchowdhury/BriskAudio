@@ -373,7 +373,7 @@ Exit initAudio()
     }
 
     // CoUninitialize() must be called only once when the program exits
-    atexit(CoUninitialize);
+    atexit((void (__cdecl*)()) CoUninitialize);
 
     if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&spEnumerator))) {
         CoUninitialize();
