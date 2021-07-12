@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace BriskAudio {
+namespace BA {
 enum class Exit {
     SUCCESS,
     FAILURE
@@ -19,7 +19,7 @@ struct Device {
 
     Device()
     {
-        name = "INVALID";
+        name = "??????";
         type = DeviceType::PLAYBACK;
         nativeHandle_ = nullptr;
     }
@@ -40,9 +40,9 @@ struct DeviceEnumerator {
         type = aType;
     }
 
-    unsigned int deviceCount();
-    Device* giveDefaultDevice();
-    Device* giveDevice(unsigned int aIndex);
+    unsigned int returnDeviceCount();
+    Device* returnDefaultDevice();
+    Device* returnDevice(unsigned int aIndex);
 };
 
 extern void (*pOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType);
