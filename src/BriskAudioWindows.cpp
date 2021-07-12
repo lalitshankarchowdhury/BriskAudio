@@ -7,11 +7,11 @@
 #include <functiondiscoverykeys_devpkey.h>
 #include <iostream>
 
-static bool isCoInitialized = false;
+static bool sIsCoInitialized = false;
 static IMMDeviceEnumerator* spEnumerator = nullptr;
 static LPCWSTR spDeviceId = nullptr;
 
-using namespace BriskAudio;
+using namespace BA;
 
 class CMMNotificationClient : public IMMNotificationClient {
     LONG _cRef;
@@ -343,7 +343,7 @@ public:
 
 static CMMNotificationClient* spClient = nullptr;
 
-namespace BriskAudio {
+namespace BA {
 void (*pOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType) = nullptr;
 void (*pOnDeviceAdd)(std::string aDeviceName, DeviceType aType) = nullptr;
 void (*pOnDeviceRemove)(std::string aDeviceName, DeviceType aType) = nullptr;
@@ -355,7 +355,7 @@ Device::~Device()
     }
 }
 
-Exit initAudio()
+Exit init()
 {
     // If BriskAudio is already initialized
     if (spClient != nullptr && spEnumerator != nullptr) {
@@ -363,17 +363,17 @@ Exit initAudio()
     }
 
     // CoInitialize() must be called only once
-    if (!isCoInitialized) {
+    if (!sIsCoInitialized) {
         if (FAILED(CoInitialize(nullptr))) {
 
             return Exit::FAILURE;
         }
 
-        isCoInitialized = true;
+        sIsCoInitialized = true;
     }
 
     // CoUninitialize() must be called only once when the program exits
-    atexit((void (__cdecl*)()) CoUninitialize);
+    atexit((void(__cdecl*)())CoUninitialize);
 
     if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&spEnumerator))) {
         CoUninitialize();
@@ -398,7 +398,7 @@ Exit initAudio()
     return Exit::SUCCESS;
 }
 
-unsigned int DeviceEnumerator::deviceCount()
+unsigned int DeviceEnumerator::returnDeviceCount()
 {
     EDataFlow flow = (type == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
@@ -534,7 +534,7 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     return pDevice;
 }
 
-Exit quitAudio()
+Exit quit()
 {
     // If BriskAudio is already uninitialized/not initialized
     if (spClient == nullptr && spEnumerator == nullptr) {
