@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace BA {
+namespace BriskAudio {
 enum class Exit {
     SUCCESS,
     FAILURE
