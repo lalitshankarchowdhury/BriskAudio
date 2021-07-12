@@ -11,7 +11,7 @@ static bool sIsCoInitialized = false;
 static IMMDeviceEnumerator* spEnumerator = nullptr;
 static LPCWSTR spDeviceId = nullptr;
 
-using namespace BA;
+using namespace BriskAudio;
 
 class CMMNotificationClient : public IMMNotificationClient {
     LONG _cRef;
@@ -343,7 +343,7 @@ public:
 
 static CMMNotificationClient* spClient = nullptr;
 
-namespace BA {
+namespace BriskAudio {
 void (*pOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType) = nullptr;
 void (*pOnDeviceAdd)(std::string aDeviceName, DeviceType aType) = nullptr;
 void (*pOnDeviceRemove)(std::string aDeviceName, DeviceType aType) = nullptr;
