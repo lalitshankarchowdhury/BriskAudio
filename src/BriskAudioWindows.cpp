@@ -1,401 +1,17 @@
 #ifdef _WIN32
-#include "../include/BriskAudio.hpp"
-#include <assert.h>
+#include "BriskAudioWindows.hpp"
 #include <atlstr.h>
-#include <Audioclient.h>
-#include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
-#include <iostream>
 
 static bool sIsCoInitialized = false;
 static IMMDeviceEnumerator* spEnumerator = nullptr;
-static LPCWSTR spDeviceId = nullptr;
-
-using namespace BriskAudio;
-
-class CMMNotificationClient : public IMMNotificationClient {
-    LONG _cRef;
-
-public:
-    CMMNotificationClient()
-    {
-        _cRef = 1;
-    }
-
-    virtual ~CMMNotificationClient()
-    {
-        pOnDefaultDeviceChange = nullptr;
-        pOnDeviceAdd = nullptr;
-        pOnDeviceRemove = nullptr;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef()
-    {
-        return InterlockedIncrement(&_cRef);
-    }
-
-    ULONG STDMETHODCALLTYPE Release()
-    {
-        ULONG ulRef = InterlockedDecrement(&_cRef);
-
-        if (ulRef == 0) {
-            delete this;
-        }
-
-        return ulRef;
-    }
-
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID** ppvInterface)
-    {
-        if (IID_IUnknown == riid) {
-            AddRef();
-
-            *ppvInterface = (IUnknown*)this;
-        }
-        else if (__uuidof(IMMNotificationClient) == riid) {
-            AddRef();
-
-            *ppvInterface = (IMMNotificationClient*)this;
-        }
-        else {
-            *ppvInterface = NULL;
-
-            return E_NOINTERFACE;
-        }
-
-        return S_OK;
-    }
-
-    HRESULT STDMETHODCALLTYPE OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
-    {
-        IMMDevice* pDevice = nullptr;
-        IPropertyStore* pStore = nullptr;
-        PROPVARIANT varName;
-        DeviceType type;
-
-        if (lstrcmpW(spDeviceId, pwstrDeviceId) != 0 && pOnDefaultDeviceChange != nullptr) {
-            if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
-                return S_FALSE;
-            }
-
-            if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-
-            pOnDefaultDeviceChange(std::string(CW2A(varName.pwszVal)), type);
-
-            spDeviceId = _wcsdup(pwstrDeviceId);
-
-            if (FAILED(PropVariantClear(&varName))) {
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            pStore->Release();
-            pDevice->Release();
-        }
-
-        return S_OK;
-    }
-
-    HRESULT STDMETHODCALLTYPE OnDeviceAdded(LPCWSTR pwstrDeviceId)
-    {
-        IMMDevice* pDevice = nullptr;
-        IPropertyStore* pStore = nullptr;
-        PROPVARIANT varName;
-        std::string deviceName;
-        IMMEndpoint* pEndpoint = nullptr;
-        EDataFlow flow;
-        DeviceType type;
-
-        if (pOnDeviceAdd != nullptr) {
-            if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
-                return S_FALSE;
-            }
-
-            if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            deviceName = CW2A(varName.pwszVal);
-
-            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
-                PropVariantClear(&varName);
-
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            if (FAILED(pEndpoint->GetDataFlow(&flow))) {
-                pEndpoint->Release();
-
-                PropVariantClear(&varName);
-
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-
-            pOnDeviceAdd(deviceName, type);
-
-            pEndpoint->Release();
-
-            if (FAILED(PropVariantClear(&varName))) {
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            pStore->Release();
-            pDevice->Release();
-        }
-
-        return S_OK;
-    };
-
-    HRESULT STDMETHODCALLTYPE OnDeviceRemoved(LPCWSTR pwstrDeviceId)
-    {
-        IMMDevice* pDevice = nullptr;
-        IPropertyStore* pStore = nullptr;
-        PROPVARIANT varName;
-        std::string deviceName;
-        IMMEndpoint* pEndpoint = nullptr;
-        EDataFlow flow;
-        DeviceType type;
-
-        if (pOnDeviceRemove != nullptr) {
-            if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
-                return S_FALSE;
-            }
-
-            if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            deviceName = CW2A(varName.pwszVal);
-
-            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
-                PropVariantClear(&varName);
-
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            if (FAILED(pEndpoint->GetDataFlow(&flow))) {
-                pEndpoint->Release();
-
-                PropVariantClear(&varName);
-
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-
-            pOnDeviceRemove(deviceName, type);
-
-            pEndpoint->Release();
-
-            if (FAILED(PropVariantClear(&varName))) {
-                pStore->Release();
-                pDevice->Release();
-
-                return S_FALSE;
-            }
-
-            pStore->Release();
-            pDevice->Release();
-        }
-
-        return S_OK;
-    }
-
-    HRESULT STDMETHODCALLTYPE OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
-    {
-        IMMDevice* pDevice = nullptr;
-        IPropertyStore* pStore = nullptr;
-        PROPVARIANT varName;
-        std::string deviceName;
-        IMMEndpoint* pEndpoint = nullptr;
-        EDataFlow flow;
-        DeviceType type;
-
-        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
-            return S_FALSE;
-        }
-
-        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-            pStore->Release();
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        deviceName = CW2A(varName.pwszVal);
-
-        if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
-            PropVariantClear(&varName);
-
-            pStore->Release();
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        if (FAILED(pEndpoint->GetDataFlow(&flow))) {
-            pEndpoint->Release();
-
-            PropVariantClear(&varName);
-
-            pStore->Release();
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-
-        switch (dwNewState) {
-        case DEVICE_STATE_DISABLED:
-        case DEVICE_STATE_NOTPRESENT:
-        case DEVICE_STATE_UNPLUGGED:
-            if (pOnDeviceRemove != nullptr) {
-                pOnDeviceRemove(deviceName, type);
-            }
-
-            break;
-
-        case DEVICE_STATE_ACTIVE:
-            if (pOnDeviceAdd != nullptr) {
-                pOnDeviceAdd(deviceName, type);
-            }
-
-            break;
-        }
-
-        pEndpoint->Release();
-
-        if (FAILED(PropVariantClear(&varName))) {
-            pStore->Release();
-            pDevice->Release();
-
-            return S_FALSE;
-        }
-
-        pStore->Release();
-        pDevice->Release();
-
-        return S_OK;
-    }
-
-    HRESULT STDMETHODCALLTYPE OnPropertyValueChanged(LPCWSTR pwstrDeviceId, const PROPERTYKEY key)
-    {
-        return S_OK;
-    }
-};
-
-static CMMNotificationClient* spClient = nullptr;
 
 namespace BriskAudio {
-void (*pOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType) = nullptr;
-void (*pOnDeviceAdd)(std::string aDeviceName, DeviceType aType) = nullptr;
-void (*pOnDeviceRemove)(std::string aDeviceName, DeviceType aType) = nullptr;
-
 Device::~Device()
 {
     if (nativeHandle_ != nullptr) {
         ((IMMDevice*)nativeHandle_)->Release();
     }
-}
-
-Exit init()
-{
-    // If BriskAudio is already initialized
-    if (spClient != nullptr && spEnumerator != nullptr) {
-        return Exit::FAILURE;
-    }
-
-    // CoInitialize() must be called only once
-    if (!sIsCoInitialized) {
-        if (FAILED(CoInitialize(nullptr))) {
-
-            return Exit::FAILURE;
-        }
-
-        sIsCoInitialized = true;
-    }
-
-    // CoUninitialize() must be called only once when the program exits
-    atexit((void(__cdecl*)())CoUninitialize);
-
-    if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&spEnumerator))) {
-        CoUninitialize();
-
-        return Exit::FAILURE;
-    }
-
-    spClient = new CMMNotificationClient();
-
-    if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(spClient))) {
-        delete spClient;
-        spClient = nullptr;
-
-        spEnumerator->Release();
-        spEnumerator = nullptr;
-
-        CoUninitialize();
-
-        return Exit::FAILURE;
-    }
-
-    return Exit::SUCCESS;
 }
 
 unsigned int DeviceEnumerator::returnDeviceCount()
@@ -534,24 +150,395 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     return pDevice;
 }
 
+DeviceEventNotifier::DeviceEventNotifier()
+{
+    cRef_ = 1;
+    pDeviceId_ = _wcsdup(L" ");
+    pOnDefaultDeviceChange_ = nullptr;
+    pOnDeviceAdd_ = nullptr;
+    pOnDeviceRemove_ = nullptr;
+}
+
+DeviceEventNotifier::~DeviceEventNotifier()
+{
+    CoTaskMemFree((void*)pDeviceId_);
+}
+
+ULONG STDMETHODCALLTYPE DeviceEventNotifier::AddRef()
+{
+    return InterlockedIncrement(&cRef_);
+}
+
+ULONG STDMETHODCALLTYPE DeviceEventNotifier::Release()
+{
+    ULONG ulRef = InterlockedDecrement(&cRef_);
+
+    if (ulRef == 0) {
+        delete this;
+    }
+
+    return ulRef;
+}
+
+HRESULT STDMETHODCALLTYPE DeviceEventNotifier::QueryInterface(REFIID riid, VOID** ppvInterface)
+{
+    if (IID_IUnknown == riid) {
+        AddRef();
+
+        *ppvInterface = (IUnknown*)this;
+    }
+    else if (__uuidof(IMMNotificationClient) == riid) {
+        AddRef();
+
+        *ppvInterface = (IMMNotificationClient*)this;
+    }
+    else {
+        *ppvInterface = NULL;
+
+        return E_NOINTERFACE;
+    }
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE DeviceEventNotifier::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
+{
+    IMMDevice* pDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    DeviceType type;
+
+    if (lstrcmpW(pDeviceId_, pwstrDeviceId) != 0 && pOnDefaultDeviceChange_ != nullptr) {
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
+
+        pOnDefaultDeviceChange_(std::string(CW2A(varName.pwszVal)), type);
+
+        pDeviceId_ = _wcsdup(pwstrDeviceId);
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pDevice->Release();
+    }
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE DeviceEventNotifier::OnDeviceAdded(LPCWSTR pwstrDeviceId)
+{
+    IMMDevice* pDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    std::string deviceName;
+    IMMEndpoint* pEndpoint = nullptr;
+    EDataFlow flow;
+    DeviceType type;
+
+    if (pOnDeviceAdd_ != nullptr) {
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
+            PropVariantClear(&varName);
+
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+            pEndpoint->Release();
+
+            PropVariantClear(&varName);
+
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
+
+        pOnDeviceAdd_(deviceName, type);
+
+        pEndpoint->Release();
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pDevice->Release();
+    }
+
+    return S_OK;
+};
+
+HRESULT STDMETHODCALLTYPE DeviceEventNotifier::OnDeviceRemoved(LPCWSTR pwstrDeviceId)
+{
+    IMMDevice* pDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    std::string deviceName;
+    IMMEndpoint* pEndpoint = nullptr;
+    EDataFlow flow;
+    DeviceType type;
+
+    if (pOnDeviceRemove_ != nullptr) {
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
+            PropVariantClear(&varName);
+
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+            pEndpoint->Release();
+
+            PropVariantClear(&varName);
+
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
+
+        pOnDeviceRemove_(deviceName, type);
+
+        pEndpoint->Release();
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pDevice->Release();
+    }
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE DeviceEventNotifier::OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
+{
+    IMMDevice* pDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    std::string deviceName;
+    IMMEndpoint* pEndpoint = nullptr;
+    EDataFlow flow;
+    DeviceType type;
+
+    if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
+        return S_FALSE;
+    }
+
+    if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+        pDevice->Release();
+
+        return S_FALSE;
+    }
+
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+        pStore->Release();
+        pDevice->Release();
+
+        return S_FALSE;
+    }
+
+    deviceName = CW2A(varName.pwszVal);
+
+    if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), (void**)&pEndpoint))) {
+        PropVariantClear(&varName);
+
+        pStore->Release();
+        pDevice->Release();
+
+        return S_FALSE;
+    }
+
+    if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+        pEndpoint->Release();
+
+        PropVariantClear(&varName);
+
+        pStore->Release();
+        pDevice->Release();
+
+        return S_FALSE;
+    }
+
+    type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
+
+    switch (dwNewState) {
+    case DEVICE_STATE_DISABLED:
+    case DEVICE_STATE_NOTPRESENT:
+    case DEVICE_STATE_UNPLUGGED:
+        if (pOnDeviceRemove_ != nullptr) {
+            pOnDeviceRemove_(deviceName, type);
+        }
+
+        break;
+
+    case DEVICE_STATE_ACTIVE:
+        if (pOnDeviceAdd_ != nullptr) {
+            pOnDeviceAdd_(deviceName, type);
+        }
+
+        break;
+    }
+
+    pEndpoint->Release();
+
+    if (FAILED(PropVariantClear(&varName))) {
+        pStore->Release();
+        pDevice->Release();
+
+        return S_FALSE;
+    }
+
+    pStore->Release();
+    pDevice->Release();
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE DeviceEventNotifier::OnPropertyValueChanged(LPCWSTR pwstrDeviceId, const PROPERTYKEY key)
+{
+    return S_OK;
+}
+
+Exit DeviceEventNotifier::registerEventCallbacks(
+    void (*apOnDefaultDeviceChange)(std::string aDeviceName, DeviceType aType),
+    void (*apOnDeviceAdd)(std::string aDeviceName, DeviceType aType),
+    void (*apOnDeviceRemove)(std::string aDeviceName, DeviceType aType))
+{
+    pOnDefaultDeviceChange_ = apOnDefaultDeviceChange;
+    pOnDeviceAdd_ = apOnDeviceAdd;
+    pOnDeviceRemove_ = apOnDeviceRemove;
+
+    if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(this))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
+}
+
+Exit DeviceEventNotifier::unregisterEventCallbacks()
+{
+    pOnDefaultDeviceChange_ = nullptr;
+    pOnDeviceAdd_ = nullptr;
+    pOnDeviceRemove_ = nullptr;
+
+    if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(this))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
+}
+
+Exit init()
+{
+    // If BriskAudio is already initialized
+    if (spEnumerator != nullptr) {
+        return Exit::FAILURE;
+    }
+
+    // CoInitialize() must be called only once
+    if (!sIsCoInitialized) {
+        if (FAILED(CoInitialize(nullptr))) {
+
+            return Exit::FAILURE;
+        }
+
+        sIsCoInitialized = true;
+    }
+
+    // CoUninitialize() must be called only once when the program exits
+    atexit((void(__cdecl*)())CoUninitialize);
+
+    if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&spEnumerator))) {
+        CoUninitialize();
+
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
+}
+
 Exit quit()
 {
     // If BriskAudio is already uninitialized/not initialized
-    if (spClient == nullptr && spEnumerator == nullptr) {
+    if (spEnumerator == nullptr) {
         return Exit::FAILURE;
     }
-
-    if (spDeviceId != nullptr) {
-        CoTaskMemFree((void*)spDeviceId);
-        spDeviceId = nullptr;
-    }
-
-    if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(spClient))) {
-        return Exit::FAILURE;
-    }
-
-    delete spClient;
-    spClient = nullptr;
 
     spEnumerator->Release();
     spEnumerator = nullptr;
