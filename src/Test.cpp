@@ -1,4 +1,5 @@
 #include "../include/BriskAudio.hpp"
+#include "BriskAudioWindows.hpp"
 #include <assert.h>
 #include <iostream>
 
@@ -29,28 +30,16 @@ int main()
 {
     assert(init() == Exit::SUCCESS);
 
-    DeviceEnumerator enumerator(DeviceType::PLAYBACK);
+    DeviceEventNotifier notifier1;
+    DeviceEventNotifier notifier2;
 
-    for (unsigned int i = 0; i < enumerator.deviceCount(); i++) {
-        std::unique_ptr<Device> pDevice(enumerator.giveDevice(i));
+    assert(notifier1.registerEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove) == Exit::SUCCESS);
+    assert(notifier2.registerEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove) == Exit::SUCCESS);
 
-        std::cout << pDevice->name << '\n';
-    }
+    getchar();
 
-    enumerator.type = DeviceType::CAPTURE;
-
-    for (unsigned int i = 0; i < enumerator.deviceCount(); i++) {
-        std::unique_ptr<Device> pDevice(enumerator.giveDevice(i));
-
-        std::cout << pDevice->name << '\n';
-    }
-
-    // Register device callbacks (optional)
-    pOnDefaultDeviceChange = onDefaultDeviceChange;
-    pOnDeviceAdd = onDeviceAdd;
-    pOnDeviceRemove = onDeviceRemove;
-
-    std::getchar();
+    assert(notifier1.unregisterEventCallbacks() == Exit::SUCCESS);
+    assert(notifier2.unregisterEventCallbacks() == Exit::SUCCESS);
 
     assert(quit() == Exit::SUCCESS);
 }
