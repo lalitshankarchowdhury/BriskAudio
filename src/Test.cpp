@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <iostream>
 
-using namespace BA;
+using namespace BriskAudio;
 
 void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType)
 {
