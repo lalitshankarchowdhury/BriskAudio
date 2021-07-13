@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <set>
 
 namespace BriskAudio {
 enum class Exit {
@@ -16,11 +17,15 @@ enum class DeviceType {
 struct Device {
     std::string name;
     DeviceType type;
+    unsigned int defaultSampleRate;
+    std::set<unsigned int> supportedNumChannels;
+    std::set<unsigned int> supportedSampleRates;
 
     Device()
     {
         name = "??????";
         type = DeviceType::PLAYBACK;
+        defaultSampleRate = 0;
         nativeHandle_ = nullptr;
     }
 
