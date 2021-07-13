@@ -1,45 +1,42 @@
 #include "../include/BriskAudio.hpp"
 #include "BriskAudioWindows.hpp"
-#include <assert.h>
+#include <cassert>
 #include <iostream>
 
 using namespace BriskAudio;
-
-void onDefaultDeviceChange(std::string aDeviceName, DeviceType aType)
-{
-    const char* type = (aType == DeviceType::PLAYBACK) ? "output" : "input";
-
-    std::cout << "Default " << type << " device changed to: " << aDeviceName + '\n';
-}
-
-void onDeviceAdd(std::string aDeviceName, DeviceType aType)
-{
-    const char* type = (aType == DeviceType::PLAYBACK) ? "Output" : "Input";
-
-    std::cout << type << " device added: " << aDeviceName + '\n';
-}
-
-void onDeviceRemove(std::string aDeviceName, DeviceType aType)
-{
-    const char* type = (aType == DeviceType::PLAYBACK) ? "Output" : "Input";
-
-    std::cout << type << " device removed: " << aDeviceName + '\n';
-}
 
 int main()
 {
     assert(init() == Exit::SUCCESS);
 
-    DeviceEventNotifier notifier1;
-    DeviceEventNotifier notifier2;
+    DeviceEnumerator enumerator;
+    Device* pDevice = nullptr;
 
-    assert(notifier1.registerEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove) == Exit::SUCCESS);
-    assert(notifier2.registerEventCallbacks(onDefaultDeviceChange, onDeviceAdd, onDeviceRemove) == Exit::SUCCESS);
+    enumerator.type = DeviceType::PLAYBACK;
 
-    getchar();
+    std::cout << "--------------------------------------------------------------------\n";
 
-    assert(notifier1.unregisterEventCallbacks() == Exit::SUCCESS);
-    assert(notifier2.unregisterEventCallbacks() == Exit::SUCCESS);
+    for (unsigned int i = 0; i < enumerator.returnDeviceCount(); i++) {
+        pDevice = enumerator.returnDevice(i);
+
+        assert(pDevice != nullptr);
+
+        std::cout << "Name: " << pDevice->name << '\n';
+        std::cout << "Default sample rate: " << pDevice->defaultSampleRate << "Hz\n";
+        std::cout << "Supported sample rates: ";
+        for (unsigned int sampleRate : pDevice->supportedSampleRates) {
+            std::cout << sampleRate << "Hz ";
+        }
+        std::cout << '\n';
+        std::cout << "Supported channels: ";
+        for (unsigned int numChannels : pDevice->supportedNumChannels) {
+            std::cout << numChannels << " ";
+        }
+        std::cout << '\n';
+        std::cout << "--------------------------------------------------------------------\n";
+
+        delete pDevice;
+    }
 
     assert(quit() == Exit::SUCCESS);
 }
