@@ -1,7 +1,10 @@
 #ifdef _WIN32
 #include "BriskAudioWindows.hpp"
+#include <array>
 #include <atlstr.h>
+#include <Audioclient.h>
 #include <functiondiscoverykeys_devpkey.h>
+#include <iostream>
 
 static bool sIsCoInitialized = false;
 static IMMDeviceEnumerator* spEnumerator = nullptr;
@@ -38,9 +41,15 @@ unsigned int DeviceEnumerator::returnDeviceCount()
 Device* DeviceEnumerator::returnDefaultDevice()
 {
     EDataFlow flow = (type == DeviceType::PLAYBACK) ? eRender : eCapture;
+    Device* pDevice = new Device();
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
-    Device* pDevice = new Device();
+    IAudioClient* pClient = nullptr;
+    WAVEFORMATEX* pFormat = nullptr;
+    WAVEFORMATEX format;
+    std::array<WORD, 3> formatTags = { WAVE_FORMAT_IEEE_FLOAT, WAVE_FORMAT_PCM, WAVE_FORMAT_EXTENSIBLE };
+    std::array<DWORD, 13> sampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000, 384000 };
+    std::array<WORD, 6> bitDepths = { 8, 16, 24, 32, 48, 64 };
 
     if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&pDevice->nativeHandle_))) {
         delete pDevice;
@@ -56,7 +65,6 @@ Device* DeviceEnumerator::returnDefaultDevice()
 
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
         delete pDevice;
-
         pStore->Release();
 
         return nullptr;
@@ -65,14 +73,51 @@ Device* DeviceEnumerator::returnDefaultDevice()
     pDevice->name = CW2A(varName.pwszVal);
     pDevice->type = type;
 
-    if (FAILED(PropVariantClear(&varName))) {
+    if (FAILED(((IMMDevice*)pDevice->nativeHandle_)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+        PropVariantClear(&varName);
         delete pDevice;
-
         pStore->Release();
 
         return nullptr;
     }
 
+    if (FAILED(pClient->GetMixFormat(&pFormat))) {
+        pClient->Release();
+        PropVariantClear(&varName);
+        delete pDevice;
+        pStore->Release();
+
+        return nullptr;
+    }
+
+    pDevice->defaultSampleRate = pFormat->nSamplesPerSec;
+
+    for (WORD formatTag : formatTags) {
+        for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+            for (DWORD sampleRate : sampleRates) {
+                for (WORD bitDepth : bitDepths) {
+                    format = {
+                        .wFormatTag = formatTag,
+                        .nChannels = numChannels,
+                        .nSamplesPerSec = sampleRate,
+                        .nAvgBytesPerSec = (sampleRate * (numChannels * bitDepth) / 8),
+                        .nBlockAlign = (WORD)(sampleRate * (numChannels * bitDepth) / 8),
+                        .wBitsPerSample = bitDepth,
+                        .cbSize = 22
+                    };
+
+                    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &format, nullptr) == S_OK) {
+                        pDevice->supportedNumChannels.insert(format.nChannels);
+                        pDevice->supportedSampleRates.insert(sampleRate);
+                    }
+                }
+            }
+        }
+    }
+
+    free(pFormat);
+    pClient->Release();
+    PropVariantClear(&varName);
     pStore->Release();
 
     return pDevice;
@@ -83,9 +128,15 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     EDataFlow flow = (type == DeviceType::PLAYBACK) ? eRender : eCapture;
     IMMDeviceCollection* pCollection = nullptr;
     unsigned int count;
+    Device* pDevice = new Device();
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
-    Device* pDevice = new Device();
+    IAudioClient* pClient = nullptr;
+    WAVEFORMATEX* pFormat = nullptr;
+    WAVEFORMATEX format;
+    std::array<WORD, 3> formatTags = { WAVE_FORMAT_IEEE_FLOAT, WAVE_FORMAT_PCM, WAVE_FORMAT_EXTENSIBLE };
+    std::array<DWORD, 13> sampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000, 384000 };
+    std::array<WORD, 6> bitDepths = { 8, 16, 24, 32, 48, 64 };
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
         delete pDevice;
@@ -94,41 +145,37 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
-        delete pDevice;
-
         pCollection->Release();
+        delete pDevice;
 
         return nullptr;
     }
 
     if (aIndex >= count) {
-        delete pDevice;
-
         pCollection->Release();
+        delete pDevice;
 
         return nullptr;
     }
 
     if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&pDevice->nativeHandle_))) {
-        delete pDevice;
-
         pCollection->Release();
+        delete pDevice;
 
         return nullptr;
     }
 
     if (FAILED(((IMMDevice*)pDevice->nativeHandle_)->OpenPropertyStore(STGM_READ, &pStore))) {
-        delete pDevice;
-
         pCollection->Release();
+        delete pDevice;
 
         return nullptr;
     }
 
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
         pStore->Release();
-
         pCollection->Release();
+        delete pDevice;
 
         return nullptr;
     }
@@ -136,14 +183,53 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     pDevice->name = CW2A(varName.pwszVal);
     pDevice->type = type;
 
-    if (FAILED(PropVariantClear(&varName))) {
+    if (FAILED(((IMMDevice*)pDevice->nativeHandle_)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+        PropVariantClear(&varName);
         pStore->Release();
-
         pCollection->Release();
+        delete pDevice;
 
         return nullptr;
     }
 
+    if (FAILED(pClient->GetMixFormat(&pFormat))) {
+        pClient->Release();
+        PropVariantClear(&varName);
+        pStore->Release();
+        pCollection->Release();
+        delete pDevice;
+
+        return nullptr;
+    }
+
+    pDevice->defaultSampleRate = pFormat->nSamplesPerSec;
+
+    for (WORD formatTag : formatTags) {
+        for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+            for (DWORD sampleRate : sampleRates) {
+                for (WORD bitDepth : bitDepths) {
+                    format = {
+                        .wFormatTag = formatTag,
+                        .nChannels = numChannels,
+                        .nSamplesPerSec = sampleRate,
+                        .nAvgBytesPerSec = (sampleRate * (numChannels * bitDepth) / 8),
+                        .nBlockAlign = (WORD)(sampleRate * (numChannels * bitDepth) / 8),
+                        .wBitsPerSample = bitDepth,
+                        .cbSize = 22
+                    };
+
+                    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &format, nullptr) == S_OK) {
+                        pDevice->supportedNumChannels.insert(format.nChannels);
+                        pDevice->supportedSampleRates.insert(sampleRate);
+                    }
+                }
+            }
+        }
+    }
+
+    free(pFormat);
+    pClient->Release();
+    PropVariantClear(&varName);
     pStore->Release();
     pCollection->Release();
 
@@ -208,6 +294,7 @@ HRESULT STDMETHODCALLTYPE DeviceEventNotifier::OnDefaultDeviceChanged(EDataFlow 
     PROPVARIANT varName;
     DeviceType type;
 
+    // This function is called three times, so call the callback function only once
     if (lstrcmpW(pDeviceId_, pwstrDeviceId) != 0 && pOnDefaultDeviceChange_ != nullptr) {
         if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pDevice))) {
             return S_FALSE;
