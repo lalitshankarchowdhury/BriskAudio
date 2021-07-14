@@ -1,6 +1,5 @@
 #ifdef _WIN32
 #include "BriskAudioWindows.hpp"
-#include <array>
 #include <atlstr.h>
 #include <Audioclient.h>
 #include <functiondiscoverykeys_devpkey.h>
@@ -15,6 +14,53 @@ Device::~Device()
     if (nativeHandle_ != nullptr) {
         ((IMMDevice*)nativeHandle_)->Release();
     }
+}
+
+bool Device::isStreamFormatSupported(BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate)
+{
+    WAVEFORMATEX format;
+    IAudioClient* pClient = nullptr;
+
+    if (FAILED(((IMMDevice*)nativeHandle_)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+        return false;
+    }
+
+    format.wFormatTag = (WORD)((aFormat == BufferFormat::FLOAT_32 || aFormat == BufferFormat::FLOAT_64) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM);
+    format.nChannels = (WORD)aNumChannels;
+    format.nSamplesPerSec = aSampleRate;
+
+    if (aFormat == BufferFormat::U_INT_8) {
+        format.wBitsPerSample = 8;
+    }
+    else if (aFormat == BufferFormat::S_INT_16) {
+        format.wBitsPerSample = 16;
+    }
+    else if (aFormat == BufferFormat::S_INT_24) {
+        format.wBitsPerSample = 24;
+    }
+    else if (aFormat == BufferFormat::S_INT_32) {
+        format.wBitsPerSample = 32;
+    }
+    else if (aFormat == BufferFormat::FLOAT_32) {
+        format.wBitsPerSample = 32;
+    }
+    else {
+        format.wBitsPerSample = 64;
+    }
+
+    format.nBlockAlign = format.nChannels * (format.wBitsPerSample / 8);
+    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+    format.cbSize = 22;
+
+    if (FAILED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &format, nullptr))) {
+        pClient->Release();
+
+        return false;
+    }
+
+    pClient->Release();
+
+    return true;
 }
 
 unsigned int DeviceEnumerator::returnDeviceCount()
@@ -44,12 +90,6 @@ Device* DeviceEnumerator::returnDefaultDevice()
     Device* pDevice = new Device();
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
-    IAudioClient* pClient = nullptr;
-    WAVEFORMATEX* pFormat = nullptr;
-    WAVEFORMATEX format;
-    std::array<WORD, 3> formatTags = { WAVE_FORMAT_IEEE_FLOAT, WAVE_FORMAT_PCM, WAVE_FORMAT_EXTENSIBLE };
-    std::array<DWORD, 13> sampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000, 384000 };
-    std::array<WORD, 6> bitDepths = { 8, 16, 24, 32, 48, 64 };
 
     if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&pDevice->nativeHandle_))) {
         delete pDevice;
@@ -73,50 +113,6 @@ Device* DeviceEnumerator::returnDefaultDevice()
     pDevice->name = CW2A(varName.pwszVal);
     pDevice->type = type;
 
-    if (FAILED(((IMMDevice*)pDevice->nativeHandle_)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
-        PropVariantClear(&varName);
-        delete pDevice;
-        pStore->Release();
-
-        return nullptr;
-    }
-
-    if (FAILED(pClient->GetMixFormat(&pFormat))) {
-        pClient->Release();
-        PropVariantClear(&varName);
-        delete pDevice;
-        pStore->Release();
-
-        return nullptr;
-    }
-
-    pDevice->defaultSampleRate = pFormat->nSamplesPerSec;
-
-    for (WORD formatTag : formatTags) {
-        for (WORD numChannels = 1; numChannels < 10; numChannels++) {
-            for (DWORD sampleRate : sampleRates) {
-                for (WORD bitDepth : bitDepths) {
-                    format = {
-                        .wFormatTag = formatTag,
-                        .nChannels = numChannels,
-                        .nSamplesPerSec = sampleRate,
-                        .nAvgBytesPerSec = (sampleRate * (numChannels * bitDepth) / 8),
-                        .nBlockAlign = (WORD)(sampleRate * (numChannels * bitDepth) / 8),
-                        .wBitsPerSample = bitDepth,
-                        .cbSize = 22
-                    };
-
-                    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &format, nullptr) == S_OK) {
-                        pDevice->supportedNumChannels.insert(format.nChannels);
-                        pDevice->supportedSampleRates.insert(sampleRate);
-                    }
-                }
-            }
-        }
-    }
-
-    free(pFormat);
-    pClient->Release();
     PropVariantClear(&varName);
     pStore->Release();
 
@@ -131,12 +127,6 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     Device* pDevice = new Device();
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
-    IAudioClient* pClient = nullptr;
-    WAVEFORMATEX* pFormat = nullptr;
-    WAVEFORMATEX format;
-    std::array<WORD, 3> formatTags = { WAVE_FORMAT_IEEE_FLOAT, WAVE_FORMAT_PCM, WAVE_FORMAT_EXTENSIBLE };
-    std::array<DWORD, 13> sampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000, 384000 };
-    std::array<WORD, 6> bitDepths = { 8, 16, 24, 32, 48, 64 };
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
         delete pDevice;
@@ -183,52 +173,6 @@ Device* DeviceEnumerator::returnDevice(unsigned int aIndex)
     pDevice->name = CW2A(varName.pwszVal);
     pDevice->type = type;
 
-    if (FAILED(((IMMDevice*)pDevice->nativeHandle_)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
-        PropVariantClear(&varName);
-        pStore->Release();
-        pCollection->Release();
-        delete pDevice;
-
-        return nullptr;
-    }
-
-    if (FAILED(pClient->GetMixFormat(&pFormat))) {
-        pClient->Release();
-        PropVariantClear(&varName);
-        pStore->Release();
-        pCollection->Release();
-        delete pDevice;
-
-        return nullptr;
-    }
-
-    pDevice->defaultSampleRate = pFormat->nSamplesPerSec;
-
-    for (WORD formatTag : formatTags) {
-        for (WORD numChannels = 1; numChannels < 10; numChannels++) {
-            for (DWORD sampleRate : sampleRates) {
-                for (WORD bitDepth : bitDepths) {
-                    format = {
-                        .wFormatTag = formatTag,
-                        .nChannels = numChannels,
-                        .nSamplesPerSec = sampleRate,
-                        .nAvgBytesPerSec = (sampleRate * (numChannels * bitDepth) / 8),
-                        .nBlockAlign = (WORD)(sampleRate * (numChannels * bitDepth) / 8),
-                        .wBitsPerSample = bitDepth,
-                        .cbSize = 22
-                    };
-
-                    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &format, nullptr) == S_OK) {
-                        pDevice->supportedNumChannels.insert(format.nChannels);
-                        pDevice->supportedSampleRates.insert(sampleRate);
-                    }
-                }
-            }
-        }
-    }
-
-    free(pFormat);
-    pClient->Release();
     PropVariantClear(&varName);
     pStore->Release();
     pCollection->Release();
