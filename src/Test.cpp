@@ -1,7 +1,6 @@
-#include "../include/BriskAudio.hpp"
-#include "BriskAudioWindows.hpp"
 #include <cassert>
 #include <iostream>
+#include "../include/BriskAudio.hpp"
 
 using namespace BriskAudio;
 
@@ -9,18 +8,27 @@ int main()
 {
     assert(init() == Exit::SUCCESS);
 
-    DeviceEnumerator enumerator;
+    Device device;
 
-    enumerator.type = DeviceType::PLAYBACK;
+    assert(openDevice(device, 0, DeviceType::PLAYBACK) == Exit::SUCCESS);
 
-    std::unique_ptr<Device> pDevice(enumerator.returnDefaultDevice());
+    std::cout << device.name << '\n';
 
-    if (pDevice->isStreamFormatSupported(BufferFormat::S_INT_24, 2, 48000)) {
-        std::cout << "Stream format supported\n";
-    }
-    else {
-        std::cout << "Stream format not supported\n";
-    }
+    assert(closeDevice(device) == Exit::SUCCESS);
+
+    assert(openDefaultDevice(device, DeviceType::PLAYBACK) == Exit::SUCCESS);
+
+    std::cout << device.name << '\n';
+
+    assert(closeDevice(device) == Exit::SUCCESS);
+
+    assert(openDevice(device, "Speakers (Realtek(R) Audio)") == Exit::SUCCESS);
+
+    std::cout << device.name << '\n';
+
+    assert(closeDevice(device) == Exit::SUCCESS);
+
+    getchar();
 
     assert(quit() == Exit::SUCCESS);
 }
