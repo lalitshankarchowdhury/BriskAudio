@@ -10,32 +10,16 @@ int main()
     assert(init() == Exit::SUCCESS);
 
     DeviceEnumerator enumerator;
-    Device* pDevice = nullptr;
 
     enumerator.type = DeviceType::PLAYBACK;
 
-    std::cout << "--------------------------------------------------------------------\n";
+    std::unique_ptr<Device> pDevice(enumerator.returnDefaultDevice());
 
-    for (unsigned int i = 0; i < enumerator.returnDeviceCount(); i++) {
-        pDevice = enumerator.returnDevice(i);
-
-        assert(pDevice != nullptr);
-
-        std::cout << "Name: " << pDevice->name << '\n';
-        std::cout << "Default sample rate: " << pDevice->defaultSampleRate << "Hz\n";
-        std::cout << "Supported sample rates: ";
-        for (unsigned int sampleRate : pDevice->supportedSampleRates) {
-            std::cout << sampleRate << "Hz ";
-        }
-        std::cout << '\n';
-        std::cout << "Supported channels: ";
-        for (unsigned int numChannels : pDevice->supportedNumChannels) {
-            std::cout << numChannels << " ";
-        }
-        std::cout << '\n';
-        std::cout << "--------------------------------------------------------------------\n";
-
-        delete pDevice;
+    if (pDevice->isStreamFormatSupported(BufferFormat::S_INT_24, 2, 48000)) {
+        std::cout << "Stream format supported\n";
+    }
+    else {
+        std::cout << "Stream format not supported\n";
     }
 
     assert(quit() == Exit::SUCCESS);
