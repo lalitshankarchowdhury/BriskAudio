@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <set>
 
 namespace BriskAudio {
 enum class Exit {
@@ -14,22 +13,28 @@ enum class DeviceType {
     CAPTURE
 };
 
+enum class BufferFormat {
+    U_INT_8,
+    S_INT_16,
+    S_INT_24,
+    S_INT_32,
+    FLOAT_32,
+    FLOAT_64
+};
+
 struct Device {
     std::string name;
     DeviceType type;
-    unsigned int defaultSampleRate;
-    std::set<unsigned int> supportedNumChannels;
-    std::set<unsigned int> supportedSampleRates;
 
     Device()
     {
         name = "??????";
         type = DeviceType::PLAYBACK;
-        defaultSampleRate = 0;
-        nativeHandle_ = nullptr;
     }
 
     ~Device();
+
+    bool isStreamFormatSupported(BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate);
 
 private:
     void* nativeHandle_;
