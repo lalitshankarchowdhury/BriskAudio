@@ -9,22 +9,17 @@ int main()
     assert(init() == Exit::SUCCESS);
 
     Device device;
-
-    assert(openDevice(device, 0, DeviceType::PLAYBACK) == Exit::SUCCESS);
-
-    std::cout << device.name << '\n';
-
-    assert(closeDevice(device) == Exit::SUCCESS);
+    float volume = 0.0f;
 
     assert(openDefaultDevice(device, DeviceType::PLAYBACK) == Exit::SUCCESS);
+    assert(device.getVolume(volume) == Exit::SUCCESS);
 
     std::cout << device.name << '\n';
+    std::cout << "Current volume: " << volume * 100.0f << "%\n";
 
-    assert(closeDevice(device) == Exit::SUCCESS);
+    assert(device.setVolume(1.0f) == Exit::SUCCESS);
 
-    assert(openDevice(device, "Speakers (Realtek(R) Audio)") == Exit::SUCCESS);
-
-    std::cout << device.name << '\n';
+    std::cout << "Current volume: " << volume * 100.0f << "%\n";
 
     assert(closeDevice(device) == Exit::SUCCESS);
 
