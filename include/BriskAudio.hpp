@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../src/BriskAudioWindows.hpp"
 #include <string>
 
 namespace BriskAudio {
@@ -23,6 +24,16 @@ enum class BufferFormat {
 };
 
 struct Stream {
+    void* nativeHandle;
+
+    Stream()
+    {
+        nativeHandle = nullptr;
+        format_ = BufferFormat::U_INT_8;
+        numChannels_ = 0;
+        sampleRate_ = 0;
+    }
+
 private:
     BufferFormat format_;
     unsigned int numChannels_;
@@ -32,23 +43,20 @@ private:
 struct Device {
     std::string name;
     DeviceType type;
-    void* nativeHandle;
+    NativeDeviceHandle handle;
 
     Device()
     {
         name = "??????";
         type = DeviceType::PLAYBACK;
-        nativeHandle = nullptr;
     }
 
-    ~Device();
-
+    Exit getVolume(float& arVolume);
+    Exit setVolume(float aVolume);
     bool isStreamFormatSupported(BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate);
     Exit openStream(Stream& arStream, BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate);
     Exit closeStream(Stream& arStream);
 };
-
-struct DeviceEventNotifier;
 
 Exit init();
 Exit getDeviceCount(unsigned int& arDeviceCount, DeviceType aType);
