@@ -1,10 +1,8 @@
 #ifdef _WIN32
-#include "BriskAudioWindows.hpp"
+#include "../include/BriskAudio.hpp"
 #include <atlstr.h>
 #include <Audioclient.h>
-#include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
-#include <iostream>
 
 static IMMDeviceEnumerator* spEnumerator = nullptr;
 static bool sIsCoInitialized = false;
@@ -12,20 +10,12 @@ static bool sIsCoInitialized = false;
 using namespace BriskAudio;
 
 namespace BriskAudio {
-Device::~Device()
-{
-    if (nativeHandle != nullptr) {
-        ((IMMDevice*)nativeHandle)->Release();
-        nativeHandle = nullptr;
-    }
-}
-
 bool Device::isStreamFormatSupported(BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate)
 {
     WAVEFORMATEX format;
     IAudioClient* pClient = nullptr;
 
-    if (FAILED(((IMMDevice*)nativeHandle)->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+    if (FAILED(handle.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
         return false;
     }
 
@@ -67,6 +57,24 @@ bool Device::isStreamFormatSupported(BufferFormat aFormat, unsigned int aNumChan
     return true;
 }
 
+Exit Device::getVolume(float& arVolume)
+{
+    if (FAILED(handle.pVolume->GetMasterVolumeLevelScalar(&arVolume))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
+}
+
+Exit Device::setVolume(float arVolume)
+{
+    if (FAILED(handle.pVolume->SetMasterVolumeLevelScalar(arVolume, nullptr))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::FAILURE;
+}
+
 Exit Device::openStream(Stream& arStream, BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate)
 {
     return Exit::FAILURE;
@@ -93,9 +101,6 @@ Exit init()
 
         sIsCoInitialized = true;
     }
-
-    // CoUninitialize() must be called only once when the program exits
-    atexit((void(__cdecl*)())CoUninitialize);
 
     if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&spEnumerator))) {
         CoUninitialize();
@@ -134,24 +139,31 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 
     arDevice.type = aType;
 
-    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eConsole, (IMMDevice**)&arDevice.nativeHandle))) {
+    if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eMultimedia, &arDevice.handle.pDevice))) {
         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)arDevice.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
-        ((IMMDevice*)arDevice.nativeHandle)->Release();
+    if (FAILED(arDevice.handle.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+        arDevice.handle.pDevice->Release();
 
         return Exit::FAILURE;
     }
 
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-        ((IMMDevice*)arDevice.nativeHandle)->Release();
         pStore->Release();
+        arDevice.handle.pDevice->Release();
 
         return Exit::FAILURE;
     }
 
     arDevice.name = CW2A(varName.pwszVal);
+
+    if (FAILED(arDevice.handle.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&arDevice.handle.pVolume))) {
+        PropVariantClear(&varName);
+        pStore->Release();
+        arDevice.handle.pDevice->Release();
+        return Exit::FAILURE;
+    }
 
     PropVariantClear(&varName);
     pStore->Release();
@@ -185,14 +197,14 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
         return Exit::FAILURE;
     }
 
-    if (FAILED(pCollection->Item(aIndex, (IMMDevice**)&arDevice.nativeHandle))) {
+    if (FAILED(pCollection->Item(aIndex, &arDevice.handle.pDevice))) {
         pCollection->Release();
 
         return Exit::FAILURE;
     }
 
-    if (FAILED(((IMMDevice*)arDevice.nativeHandle)->OpenPropertyStore(STGM_READ, &pStore))) {
-        ((IMMDevice*)arDevice.nativeHandle)->Release();
+    if (FAILED(arDevice.handle.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+        arDevice.handle.pDevice->Release();
         pCollection->Release();
 
         return Exit::FAILURE;
@@ -200,13 +212,22 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
         pStore->Release();
-        ((IMMDevice*)arDevice.nativeHandle)->Release();
+        arDevice.handle.pDevice->Release();
         pCollection->Release();
 
         return Exit::FAILURE;
     }
 
     arDevice.name = CW2A(varName.pwszVal);
+
+    if (FAILED(arDevice.handle.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&arDevice.handle.pVolume))) {
+        PropVariantClear(&varName);
+        pStore->Release();
+        arDevice.handle.pDevice->Release();
+        pCollection->Release();
+
+        return Exit::FAILURE;
+    }
 
     PropVariantClear(&varName);
     pStore->Release();
@@ -282,9 +303,19 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
                 return Exit::FAILURE;
             }
 
+            if (FAILED(arDevice.handle.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&arDevice.handle.pVolume))) {
+                pEndpoint->Release();
+                PropVariantClear(&varName);
+                pStore->Release();
+                pDevice->Release();
+                pCollection->Release();
+
+                return Exit::FAILURE;
+            }
+
             arDevice.name = deviceName;
             arDevice.type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-            arDevice.nativeHandle = (void*)pDevice;
+            arDevice.handle.pDevice = pDevice;
 
             pEndpoint->Release();
             PropVariantClear(&varName);
@@ -309,12 +340,12 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
 Exit closeDevice(Device& arDevice)
 {
-    if (arDevice.nativeHandle == nullptr) {
+    if (arDevice.handle.pDevice == nullptr) {
         return Exit::FAILURE;
     }
 
-    ((IMMDevice*)arDevice.nativeHandle)->Release();
-    arDevice.nativeHandle = nullptr;
+    arDevice.handle.pDevice->Release();
+    arDevice.handle.pDevice = nullptr;
 
     return Exit::SUCCESS;
 }
@@ -328,6 +359,9 @@ Exit quit()
 
     spEnumerator->Release();
     spEnumerator = nullptr;
+
+    // CoUninitialize() must be called only once when the program exits
+    atexit((void(__cdecl*)())CoUninitialize);
 
     return Exit::SUCCESS;
 }
