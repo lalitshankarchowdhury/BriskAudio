@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../src/BriskAudioWindows.hpp"
-#include <string>
 
 namespace BriskAudio {
 enum class Exit {
@@ -23,8 +22,8 @@ enum class BufferFormat {
     FLOAT_64
 };
 
-// NativeDeviceHandle is defined in platform-specific headers and contains pointers to device event callbacks
-struct Device : NativeDeviceHandle {
+// NativeDeviceHandle is defined in platform-specific headers
+struct Device : public NativeDeviceHandle {
     std::string name;
     DeviceType type;
 
