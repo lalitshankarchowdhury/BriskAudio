@@ -15,13 +15,19 @@ NativeDeviceHandle::NativeDeviceHandle()
     pDevice = nullptr;
     pVolume = nullptr;
     eventContext = GUID_NULL;
-    cRef_ = 1;
     pOnVolumeChange = nullptr;
     pOnMute = nullptr;
+    pOnDefaultDeviceChange = nullptr;
+    pOnDeviceAdd = nullptr;
+    pOnDeviceRemove = nullptr;
+    cRef_ = 1;
+    pDeviceId_ = _wcsdup(L" ");
 }
 
 NativeDeviceHandle::~NativeDeviceHandle()
 {
+    CoTaskMemFree((void*)pDeviceId_);
+
     if (pVolume != nullptr) {
         pVolume->Release();
         pVolume = nullptr;
@@ -54,7 +60,13 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::QueryInterface(REFIID riid, VOID**
     if (riid == __uuidof(IUnknown)) {
         AddRef();
 
-        *ppvInterface = (IUnknown*)this;
+        // Since both IMMNotificationClient and IAudioEndpointVolumeCallback inherit IUnknown, the compiler needs more info on how to typecast
+        *ppvInterface = (IUnknown*)(IMMNotificationClient*)this;
+    }
+    else if (riid == __uuidof(IMMNotificationClient)) {
+        AddRef();
+
+        *ppvInterface = (IMMNotificationClient*)this;
     }
     else if (riid == __uuidof(IAudioEndpointVolumeCallback)) {
         AddRef();
@@ -67,6 +79,176 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::QueryInterface(REFIID riid, VOID**
         return E_NOINTERFACE;
     }
 
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
+{
+    IMMDevice* pTempDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+
+    // This function is called three times (for each device role), so call the callback only once
+    if (lstrcmpW(pDeviceId_, pwstrDeviceId) != 0 && pOnDefaultDeviceChange != nullptr) {
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pOnDefaultDeviceChange(std::string(CW2A(varName.pwszVal)));
+
+        pDeviceId_ = _wcsdup(pwstrDeviceId);
+
+        if (FAILED(PropVariantClear(&varName))) {
+            pStore->Release();
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        pStore->Release();
+        pTempDevice->Release();
+    }
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceAdded(LPCWSTR pwstrDeviceId)
+{
+    IMMDevice* pTempDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    std::string deviceName;
+
+    if (pOnDeviceAdd != nullptr) {
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        pOnDeviceAdd(deviceName);
+
+        pStore->Release();
+        pTempDevice->Release();
+    }
+
+    return S_OK;
+};
+
+HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceRemoved(LPCWSTR pwstrDeviceId)
+{
+    IMMDevice* pTempDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    std::string deviceName;
+
+    if (pOnDeviceRemove != nullptr) {
+        if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
+            return S_FALSE;
+        }
+
+        if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+            pStore->Release();
+            pTempDevice->Release();
+
+            return S_FALSE;
+        }
+
+        deviceName = CW2A(varName.pwszVal);
+
+        pOnDeviceRemove(deviceName);
+
+        pStore->Release();
+        pTempDevice->Release();
+    }
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
+{
+    IMMDevice* pTempDevice = nullptr;
+    IPropertyStore* pStore = nullptr;
+    PROPVARIANT varName;
+    std::string deviceName;
+
+    if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
+        return S_FALSE;
+    }
+
+    if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+        pTempDevice->Release();
+
+        return S_FALSE;
+    }
+
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+        pStore->Release();
+        pTempDevice->Release();
+
+        return S_FALSE;
+    }
+
+    deviceName = CW2A(varName.pwszVal);
+
+    switch (dwNewState) {
+    case DEVICE_STATE_DISABLED:
+    case DEVICE_STATE_NOTPRESENT:
+    case DEVICE_STATE_UNPLUGGED:
+        if (pOnDeviceRemove != nullptr) {
+            pOnDeviceRemove(deviceName);
+        }
+
+        break;
+
+    case DEVICE_STATE_ACTIVE:
+        if (pOnDeviceAdd != nullptr) {
+            pOnDeviceAdd(deviceName);
+        }
+
+        break;
+    }
+
+    pStore->Release();
+    pTempDevice->Release();
+
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnPropertyValueChanged(LPCWSTR pwstrDeviceId, const PROPERTYKEY key)
+{
     return S_OK;
 }
 
@@ -235,6 +417,15 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
         PropVariantClear(&varName);
         pStore->Release();
         arDevice.pDevice->Release();
+        return Exit::FAILURE;
+    }
+
+    if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
+        arDevice.pVolume->Release();
+        PropVariantClear(&varName);
+        pStore->Release();
+        arDevice.pDevice->Release();
+
         return Exit::FAILURE;
     }
 
@@ -435,7 +626,16 @@ Exit closeDevice(Device& arDevice)
         return Exit::FAILURE;
     }
 
-    if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
+    if (FAILED(arDevice.pVolume->UnregisterControlChangeNotify(&arDevice))) {
+        arDevice.pVolume->Release();
+        arDevice.pVolume = nullptr;
+        arDevice.pDevice->Release();
+        arDevice.pDevice = nullptr;
+
+        return Exit::FAILURE;
+    }
+
+    if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(&arDevice))) {
         arDevice.pVolume->Release();
         arDevice.pVolume = nullptr;
         arDevice.pDevice->Release();
