@@ -14,6 +14,21 @@ void onMute()
     std::cout << "Device muted\n";
 }
 
+void onDefaultDeviceChange(std::string aDeviceName)
+{
+    std::cout << "Default device changed to: " << aDeviceName << '\n';
+}
+
+void onDeviceAdd(std::string aDeviceName)
+{
+    std::cout << "Device added: " << aDeviceName << '\n';    
+}
+
+void onDeviceRemove(std::string aDeviceName)
+{
+    std::cout << "Device removed: " << aDeviceName << '\n'; 
+}
+
 int main()
 {
     assert(init() == Exit::SUCCESS);
@@ -24,6 +39,9 @@ int main()
 
     device.pOnVolumeChange = onVolumeChange;
     device.pOnMute = onMute;
+    device.pOnDefaultDeviceChange = onDefaultDeviceChange;
+    device.pOnDeviceAdd = onDeviceAdd;
+    device.pOnDeviceRemove = onDeviceRemove;
 
     getchar();
 
