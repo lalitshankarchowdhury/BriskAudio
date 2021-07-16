@@ -21,12 +21,12 @@ void onDefaultDeviceChange(std::string aDeviceName)
 
 void onDeviceAdd(std::string aDeviceName)
 {
-    std::cout << "Device added: " << aDeviceName << '\n';    
+    std::cout << "Device added: " << aDeviceName << '\n';
 }
 
 void onDeviceRemove(std::string aDeviceName)
 {
-    std::cout << "Device removed: " << aDeviceName << '\n'; 
+    std::cout << "Device removed: " << aDeviceName << '\n';
 }
 
 int main()
