@@ -27,6 +27,7 @@ enum class BufferFormat {
 struct Device : public NativeDeviceHandle {
     std::string name;
     DeviceType type;
+    std::vector<unsigned int> supportedChannels;
     std::vector<unsigned int> sampleRates;
 
     Device()
