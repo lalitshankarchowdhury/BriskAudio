@@ -1,6 +1,7 @@
 #ifdef _WIN32
 #include "../include/BriskAudio.hpp"
 #include <atlstr.h>
+#include <array>
 #include <Audioclient.h>
 #include <functiondiscoverykeys_devpkey.h>
 
@@ -396,6 +397,8 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
+    IAudioClient* pClient = nullptr;
+    std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
 
     arDevice.type = aType;
 
@@ -448,9 +451,39 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
         goto Exit;
     }
 
+    PropVariantClear(&varName);
+
+    if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+    }
+
+    if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+    }
+
+    // Query supported sample rates
+    for (DWORD sampleRate : standardSampleRates) {
+        ((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
+
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+            arDevice.sampleRates.push_back(sampleRate);
+        }
+    }
+
+    PropVariantClear(&varName);
+
     status = Exit::SUCCESS;
 
 Exit:
+    SAFE_RELEASE(pClient)
     SAFE_RELEASE(pStore)
 
     return status;
