@@ -3,6 +3,7 @@
 #ifdef _WIN32
 #include <string>
 #include <Endpointvolume.h>
+#include <initguid.h>
 #include <mmdeviceapi.h>
 
 namespace BriskAudio {
