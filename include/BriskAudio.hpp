@@ -15,13 +15,19 @@ enum class DeviceType {
 };
 
 enum class BufferFormat {
-    U_INT_8,
-    S_INT_16,
-    S_INT_24,
-    S_INT_32,
-    FLOAT_32,
-    FLOAT_64
+    U_INT_8 = 1,
+    S_INT_16 = 2,
+    S_INT_24 = 4,
+    S_INT_32 = 8,
+    FLOAT_32 = 16,
+    FLOAT_64 = 32
 };
+
+constexpr BufferFormat operator |=(BufferFormat& left, BufferFormat right) {
+	left = static_cast<BufferFormat>(static_cast<unsigned int>(left) | static_cast<unsigned int>(right));
+
+	return left;
+}
 
 // NativeDeviceHandle is defined in platform-specific headers
 struct Device : public NativeDeviceHandle {
@@ -29,16 +35,18 @@ struct Device : public NativeDeviceHandle {
     DeviceType type;
     std::vector<unsigned int> supportedChannels;
     std::vector<unsigned int> sampleRates;
+	BufferFormat supportedFormats;
 
     Device()
     {
         name = "??????";
         type = DeviceType::PLAYBACK;
+		supportedFormats = static_cast<BufferFormat>(0);
     }
 
     Exit getVolume(float& arVolume);
     Exit setVolume(float aVolume);
-    bool isStreamFormatSupported(BufferFormat aFormat, unsigned int aNumChannels, unsigned int aSampleRate);
+    bool isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat);
 };
 
 Exit init();
