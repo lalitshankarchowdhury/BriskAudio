@@ -398,6 +398,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
     IAudioClient* pClient = nullptr;
+    WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
 
     arDevice.type = aType;
@@ -469,11 +470,13 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
         goto Exit;
     }
 
+    pQueryFormat = (WAVEFORMATEX*)varName.blob.pBlobData;
+
 	// Query supported channels
 	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
-        ((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = numChannels;
+        pQueryFormat->nChannels = numChannels;
 
-        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             arDevice.supportedChannels.push_back(numChannels);
         }
 	}
@@ -487,13 +490,13 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 	}
 	
 	// Set nChannels to a valid value
-	((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = (WORD) arDevice.supportedChannels[0];
+	pQueryFormat->nChannels = (WORD) arDevice.supportedChannels[0];
 
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
-        ((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
+        pQueryFormat->nSamplesPerSec = sampleRate;
 
-        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
@@ -526,6 +529,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
 	IAudioClient* pClient = nullptr;
+    WAVEFORMATEX* pQueryFormat = nullptr;
 	std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
 
     arDevice.type = aType;
@@ -585,11 +589,13 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
         goto Exit;
     }
 
+    pQueryFormat = (WAVEFORMATEX*)varName.blob.pBlobData;
+
 	// Query supported channels
 	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
-        ((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = numChannels;
+        pQueryFormat->nChannels = numChannels;
 
-        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             arDevice.supportedChannels.push_back(numChannels);
         }
 	}
@@ -603,13 +609,13 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 	}
 	
 	// Set nChannels to a valid value
-	((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = (WORD) arDevice.supportedChannels[0];
+	pQueryFormat->nChannels = (WORD) arDevice.supportedChannels[0];
 
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
-        ((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
+        pQueryFormat->nSamplesPerSec = sampleRate;
 
-        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
@@ -646,6 +652,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     IMMEndpoint* pEndpoint = nullptr;
     EDataFlow flow;
 	IAudioClient* pClient = nullptr;
+    WAVEFORMATEX* pQueryFormat = nullptr;
 	std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE, &pCollection))) {
@@ -714,11 +721,13 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 				goto Exit;
 			}
 
+            pQueryFormat = (WAVEFORMATEX*)varName.blob.pBlobData;
+
 			// Query supported channels
 			for (WORD numChannels = 1; numChannels < 10; numChannels++) {
-				((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = numChannels;
+				pQueryFormat->nChannels = numChannels;
 
-				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
 					arDevice.supportedChannels.push_back(numChannels);
 				}
 			}
@@ -732,13 +741,13 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 			}
 			
 			// Set nChannels to a valid value
-			((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = (WORD) arDevice.supportedChannels[0];
+			pQueryFormat->nChannels = (WORD) arDevice.supportedChannels[0];
 
 			// Query supported sample rates
 			for (DWORD sampleRate : standardSampleRates) {
-				((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
+				pQueryFormat->nSamplesPerSec = sampleRate;
 
-				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
 					arDevice.sampleRates.push_back(sampleRate);
 				}
 			}
