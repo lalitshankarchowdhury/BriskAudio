@@ -37,6 +37,14 @@ int main()
 
     assert(openDefaultDevice(device, DeviceType::PLAYBACK) == Exit::SUCCESS);
 
+    std::cout << "Device name: " << device.name << '\n';
+
+    std::cout << "Supported sample rates:";
+    for (unsigned int sampleRate : device.sampleRates) {
+        std::cout << ' ' << sampleRate;
+    }
+    std::cout << '\n';
+
     device.pOnVolumeChange = onVolumeChange;
     device.pOnMute = onMute;
     device.pOnDefaultDeviceChange = onDefaultDeviceChange;
