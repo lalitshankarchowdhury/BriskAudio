@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../src/BriskAudioWindows.hpp"
+#include <vector>
 
 namespace BriskAudio {
 enum class Exit {
@@ -26,6 +27,7 @@ enum class BufferFormat {
 struct Device : public NativeDeviceHandle {
     std::string name;
     DeviceType type;
+    std::vector<unsigned int> sampleRates;
 
     Device()
     {
