@@ -38,6 +38,12 @@ int main()
     assert(openDefaultDevice(device, DeviceType::PLAYBACK) == Exit::SUCCESS);
 
     std::cout << "Device name: " << device.name << '\n';
+	
+    std::cout << "Supported channels:";
+    for (unsigned int numChannels : device.supportedChannels) {
+        std::cout << ' ' << numChannels;
+    }
+    std::cout << '\n';
 
     std::cout << "Supported sample rates:";
     for (unsigned int sampleRate : device.sampleRates) {
