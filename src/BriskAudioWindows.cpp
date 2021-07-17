@@ -469,6 +469,26 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
         goto Exit;
     }
 
+	// Query supported channels
+	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+        ((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = numChannels;
+
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+            arDevice.supportedChannels.push_back(numChannels);
+        }
+	}
+	
+	if (arDevice.supportedChannels.size() == 0) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+	}
+	
+	// Set nChannels to a valid value
+	((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = (WORD) arDevice.supportedChannels[0];
+
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
         ((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
@@ -477,6 +497,14 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
+	
+	if (arDevice.supportedChannels.size() == 0) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+	}
 
     PropVariantClear(&varName);
 
@@ -497,6 +525,8 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     unsigned int count;
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
+	IAudioClient* pClient = nullptr;
+	std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
 
     arDevice.type = aType;
 
@@ -536,10 +566,68 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
         goto Exit;
     }
+	
+	PropVariantClear(&varName);
+	
+	if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+    }
+
+    if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+    }
+
+	// Query supported channels
+	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+        ((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = numChannels;
+
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+            arDevice.supportedChannels.push_back(numChannels);
+        }
+	}
+	
+	if (arDevice.supportedChannels.size() == 0) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+	}
+	
+	// Set nChannels to a valid value
+	((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = (WORD) arDevice.supportedChannels[0];
+
+    // Query supported sample rates
+    for (DWORD sampleRate : standardSampleRates) {
+        ((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
+
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+            arDevice.sampleRates.push_back(sampleRate);
+        }
+    }
+	
+	if (arDevice.supportedChannels.size() == 0) {
+        SAFE_RELEASE(arDevice.pVolume)
+        PropVariantClear(&varName);
+        SAFE_RELEASE(arDevice.pDevice)
+
+        goto Exit;
+	}
+	
+	PropVariantClear(&varName);
 
     status = Exit::SUCCESS;
 
 Exit:
+	SAFE_RELEASE(pClient)
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pCollection)
 
@@ -557,6 +645,8 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     std::string deviceName;
     IMMEndpoint* pEndpoint = nullptr;
     EDataFlow flow;
+	IAudioClient* pClient = nullptr;
+	std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE, &pCollection))) {
         goto Exit;
@@ -605,6 +695,63 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             arDevice.name = deviceName;
             arDevice.type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
             arDevice.pDevice = pDevice;
+			
+			PropVariantClear(&varName);
+	
+			if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
+				SAFE_RELEASE(arDevice.pVolume)
+				PropVariantClear(&varName);
+				SAFE_RELEASE(arDevice.pDevice)
+
+				goto Exit;
+			}
+
+			if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+				SAFE_RELEASE(arDevice.pVolume)
+				PropVariantClear(&varName);
+				SAFE_RELEASE(arDevice.pDevice)
+
+				goto Exit;
+			}
+
+			// Query supported channels
+			for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+				((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = numChannels;
+
+				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+					arDevice.supportedChannels.push_back(numChannels);
+				}
+			}
+			
+			if (arDevice.supportedChannels.size() == 0) {
+				SAFE_RELEASE(arDevice.pVolume)
+				PropVariantClear(&varName);
+				SAFE_RELEASE(arDevice.pDevice)
+
+				goto Exit;
+			}
+			
+			// Set nChannels to a valid value
+			((WAVEFORMATEX*)varName.blob.pBlobData)->nChannels = (WORD) arDevice.supportedChannels[0];
+
+			// Query supported sample rates
+			for (DWORD sampleRate : standardSampleRates) {
+				((WAVEFORMATEX*)varName.blob.pBlobData)->nSamplesPerSec = sampleRate;
+
+				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, (WAVEFORMATEX*)varName.blob.pBlobData, nullptr) == S_OK) {
+					arDevice.sampleRates.push_back(sampleRate);
+				}
+			}
+			
+			if (arDevice.supportedChannels.size() == 0) {
+				SAFE_RELEASE(arDevice.pVolume)
+				PropVariantClear(&varName);
+				SAFE_RELEASE(arDevice.pDevice)
+
+				goto Exit;
+			}
+			
+			PropVariantClear(&varName);
 
             status = Exit::SUCCESS;
 
@@ -618,6 +765,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     }
 
 Exit:
+	SAFE_RELEASE(pClient)
     SAFE_RELEASE(pEndpoint)
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pDevice)
