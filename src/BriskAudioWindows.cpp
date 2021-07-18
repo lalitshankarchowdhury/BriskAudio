@@ -27,7 +27,7 @@ NativeDeviceHandle::NativeDeviceHandle()
     pOnDefaultDeviceChange = nullptr;
     pOnDeviceAdd = nullptr;
     pOnDeviceRemove = nullptr;
-    referenceCount = 1;
+    referenceCount_ = 1;
     pDeviceId_ = _wcsdup(L" ");
 }
 
@@ -41,12 +41,12 @@ NativeDeviceHandle::~NativeDeviceHandle()
 
 ULONG STDMETHODCALLTYPE NativeDeviceHandle::AddRef()
 {
-    return InterlockedIncrement(&referenceCount);
+    return InterlockedIncrement(&referenceCount_);
 }
 
 ULONG STDMETHODCALLTYPE NativeDeviceHandle::Release()
 {
-    ULONG ulRef = InterlockedDecrement(&referenceCount);
+    ULONG ulRef = InterlockedDecrement(&referenceCount_);
 
     if (ulRef == 0) {
         delete this;
