@@ -15,6 +15,7 @@ enum class DeviceType {
 };
 
 enum class BufferFormat {
+    NONE = 0,
     U_INT_8 = 1,
     S_INT_16 = 2,
     S_INT_24 = 4,
@@ -100,7 +101,7 @@ struct Device : public NativeDeviceHandle {
     {
         name = "??????";
         type = DeviceType::PLAYBACK;
-        supportedFormats = static_cast<BufferFormat>(0);
+        supportedFormats = NONE;
     }
 
     Exit getVolume(float& arVolume);
