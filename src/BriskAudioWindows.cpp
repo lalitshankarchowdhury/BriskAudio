@@ -61,17 +61,17 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::QueryInterface(REFIID riid, VOID**
         AddRef();
 
         // Since both IMMNotificationClient and IAudioEndpointVolumeCallback inherit IUnknown, the compiler needs more info on how to typecast
-        *ppvInterface = (IUnknown*)(IMMNotificationClient*)this;
+        *ppvInterface = static_cast<IUnknown*>(static_cast<IMMNotificationClient*>(this));
     }
     else if (riid == __uuidof(IMMNotificationClient)) {
         AddRef();
 
-        *ppvInterface = (IMMNotificationClient*)this;
+        *ppvInterface = static_cast<IMMNotificationClient*>(this);
     }
     else if (riid == __uuidof(IAudioEndpointVolumeCallback)) {
         AddRef();
 
-        *ppvInterface = (IAudioEndpointVolumeCallback*)this;
+        *ppvInterface = static_cast<IAudioEndpointVolumeCallback*>(this);
     }
     else {
         *ppvInterface = nullptr;
@@ -286,9 +286,9 @@ bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSa
         goto Exit;
     }
 
-    format.nChannels = (WORD)aNumChannels;
+    format.nChannels = static_cast<WORD>(aNumChannels);
     format.nSamplesPerSec = aSampleRate;
-	format.wFormatTag = (WORD)((aFormat == BufferFormat::FLOAT_32 || aFormat == BufferFormat::FLOAT_64) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM);
+	format.wFormatTag = static_cast<WORD>(((aFormat == BufferFormat::FLOAT_32 || aFormat == BufferFormat::FLOAT_64) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM));
 
     if (aFormat == BufferFormat::U_INT_8) {
         format.wBitsPerSample = 8;
@@ -470,7 +470,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
         goto Exit;
     }
 
-    pQueryFormat = (WAVEFORMATEX*)varName.blob.pBlobData;
+    pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
 	
 	// Query supported channels
 	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
@@ -490,7 +490,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 	}
 	
 	// Set nChannels to a valid value
-	pQueryFormat->nChannels = (WORD) arDevice.supportedChannels[0];
+	pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
 
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
@@ -658,7 +658,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
         goto Exit;
     }
 
-    pQueryFormat = (WAVEFORMATEX*)varName.blob.pBlobData;
+    pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
 	
 	// Query supported channels
 	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
@@ -678,7 +678,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 	}
 	
 	// Set nChannels to a valid value
-	pQueryFormat->nChannels = (WORD) arDevice.supportedChannels[0];
+	pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
 
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
@@ -862,7 +862,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 				goto Exit;
 			}
 
-            pQueryFormat = (WAVEFORMATEX*)varName.blob.pBlobData;
+            pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
 			
 			// Query supported channels
 			for (WORD numChannels = 1; numChannels < 10; numChannels++) {
@@ -882,7 +882,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 			}
 			
 			// Set nChannels to a valid value
-			pQueryFormat->nChannels = (WORD) arDevice.supportedChannels[0];
+			pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
 
 			// Query supported sample rates
 			for (DWORD sampleRate : standardSampleRates) {
