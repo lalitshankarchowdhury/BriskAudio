@@ -35,11 +35,11 @@ int main()
 
 	unsigned int count = 0;
 	
-	assert(getDeviceCount(count, DeviceType::CAPTURE) == Exit::SUCCESS);
+	assert(getDeviceCount(count, DeviceType::PLAYBACK) == Exit::SUCCESS);
 	
 	for (unsigned int i = 0; i < count; i++) {
 		Device device;
-		assert(openDevice(device, i, DeviceType::CAPTURE) == Exit::SUCCESS);
+		assert(openDevice(device, i, DeviceType::PLAYBACK) == Exit::SUCCESS);
 
 		std::cout << "Device name: " << device.name << '\n';
 		
@@ -55,7 +55,31 @@ int main()
 		}
 		std::cout << '\n';
 		
-		std::cout << "Buffer format mask: 0x" << std::hex << static_cast<unsigned int>(device.supportedFormats) << '\n';
+		std::cout << "Supported buffer formats: ";
+		if ((device.supportedFormats & BufferFormat::U_INT_8) == BufferFormat::U_INT_8) {
+			std::cout << "/ Unsigned 8-bit integer ";
+		}
+
+		if ((device.supportedFormats & BufferFormat::S_INT_16) == BufferFormat::S_INT_16) {
+			std::cout << "/ Signed 16-bit integer ";
+		}
+
+		if ((device.supportedFormats & BufferFormat::S_INT_24) == BufferFormat::S_INT_24) {
+			std::cout << "/ Signed 24-bit integer ";
+		}
+
+		if ((device.supportedFormats & BufferFormat::S_INT_32) == BufferFormat::S_INT_32) {
+			std::cout << "/ Signed 32-bit integer ";
+		}
+
+		if ((device.supportedFormats & BufferFormat::FLOAT_32) == BufferFormat::FLOAT_32) {
+			std::cout << "/ 32-bit float ";
+		}
+
+		if ((device.supportedFormats & BufferFormat::FLOAT_64) == BufferFormat::FLOAT_64) {
+			std::cout << "/ 64-bit float ";
+		}
+		std::cout << '\n';
 
 		device.pOnVolumeChange = onVolumeChange;
 		device.pOnMute = onMute;
