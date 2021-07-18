@@ -23,18 +23,21 @@ enum class BufferFormat {
     FLOAT_64 = 32
 };
 
-constexpr BufferFormat operator &(BufferFormat left, BufferFormat right) {
+constexpr BufferFormat operator&(BufferFormat left, BufferFormat right)
+{
     return static_cast<BufferFormat>(static_cast<unsigned int>(left) & static_cast<unsigned int>(right));
 }
 
-constexpr BufferFormat operator |(BufferFormat left, BufferFormat right) {
+constexpr BufferFormat operator|(BufferFormat left, BufferFormat right)
+{
     return static_cast<BufferFormat>(static_cast<unsigned int>(left) | static_cast<unsigned int>(right));
 }
 
-constexpr BufferFormat operator |=(BufferFormat& left, BufferFormat right) {
-	left = static_cast<BufferFormat>(static_cast<unsigned int>(left) | static_cast<unsigned int>(right));
+constexpr BufferFormat operator|=(BufferFormat& left, BufferFormat right)
+{
+    left = static_cast<BufferFormat>(static_cast<unsigned int>(left) | static_cast<unsigned int>(right));
 
-	return left;
+    return left;
 }
 
 // NativeDeviceHandle is defined in platform-specific headers
@@ -43,13 +46,13 @@ struct Device : public NativeDeviceHandle {
     DeviceType type;
     std::vector<unsigned int> supportedChannels;
     std::vector<unsigned int> sampleRates;
-	BufferFormat supportedFormats;
+    BufferFormat supportedFormats;
 
     Device()
     {
         name = "??????";
         type = DeviceType::PLAYBACK;
-		supportedFormats = static_cast<BufferFormat>(0);
+        supportedFormats = static_cast<BufferFormat>(0);
     }
 
     Exit getVolume(float& arVolume);
