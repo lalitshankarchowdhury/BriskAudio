@@ -42,8 +42,7 @@ inline constexpr BufferFormat operator^(BufferFormat left, BufferFormat right) {
     return static_cast<BufferFormat>(static_cast<unsigned int>(left) ^ static_cast<unsigned int>(right));
 }
 
-inline constexpr BufferFormat
-operator<<(BufferFormat left, BufferFormat right)
+inline constexpr BufferFormat operator<<(BufferFormat left, BufferFormat right)
 {
     return static_cast<BufferFormat>(static_cast<unsigned int>(left) << static_cast<unsigned int>(right));
 }
