@@ -30,7 +30,7 @@ struct NativeDeviceHandle : public IAudioEndpointVolumeCallback, public IMMNotif
     HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify);
 
 private:
-    LONG cRef_;
+    LONG referenceCount_;
     LPCWSTR pDeviceId_;
 };
 }
