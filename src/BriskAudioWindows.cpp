@@ -288,7 +288,7 @@ bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSa
 
     format.nChannels = static_cast<WORD>(aNumChannels);
     format.nSamplesPerSec = aSampleRate;
-	format.wFormatTag = static_cast<WORD>(((aFormat == BufferFormat::FLOAT_32 || aFormat == BufferFormat::FLOAT_64) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM));
+    format.wFormatTag = static_cast<WORD>(((aFormat == BufferFormat::FLOAT_32 || aFormat == BufferFormat::FLOAT_64) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM));
 
     if (aFormat == BufferFormat::U_INT_8) {
         format.wBitsPerSample = 8;
@@ -399,7 +399,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     PROPVARIANT varName;
     IAudioClient* pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
-    std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
+    std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
 
     arDevice.type = aType;
 
@@ -471,26 +471,26 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     }
 
     pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
-	
-	// Query supported channels
-	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+
+    // Query supported channels
+    for (WORD numChannels = 1; numChannels < 10; numChannels++) {
         pQueryFormat->nChannels = numChannels;
 
         if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             arDevice.supportedChannels.push_back(numChannels);
         }
-	}
-	
-	if (arDevice.supportedChannels.size() == 0) {
+    }
+
+    if (arDevice.supportedChannels.size() == 0) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
 
         goto Exit;
-	}
-	
-	// Set nChannels to a valid value
-	pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
+    }
+
+    // Set nChannels to a valid value
+    pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
 
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
@@ -500,59 +500,59 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
-	
-	if (arDevice.sampleRates.size() == 0) {
+
+    if (arDevice.sampleRates.size() == 0) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
 
         goto Exit;
-	}
-	
-	// Set nSamplesPerSec to a valid value
-	pQueryFormat->nSamplesPerSec = arDevice.sampleRates[0];
-	
-	// Query supported buffer formats
-	pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
-	
-	for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
-		pQueryFormat->wBitsPerSample = bitDepth;
-		
-		if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+    }
+
+    // Set nSamplesPerSec to a valid value
+    pQueryFormat->nSamplesPerSec = arDevice.sampleRates[0];
+
+    // Query supported buffer formats
+    pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
+
+    for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
+        pQueryFormat->wBitsPerSample = bitDepth;
+
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             if (bitDepth == 8) {
-				arDevice.supportedFormats |= BufferFormat::U_INT_8;
-			}
-			else if (bitDepth == 16) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_16;
-			}
-			else if (bitDepth == 24) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_24;
-			}
-			else {
-				arDevice.supportedFormats |= BufferFormat::S_INT_32;
-			}
+                arDevice.supportedFormats |= BufferFormat::U_INT_8;
+            }
+            else if (bitDepth == 16) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_16;
+            }
+            else if (bitDepth == 24) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_24;
+            }
+            else {
+                arDevice.supportedFormats |= BufferFormat::S_INT_32;
+            }
         }
-	}
-	
-	pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
-	
-	if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-		arDevice.supportedFormats |= BufferFormat::FLOAT_32;
-	}
-	
-	pQueryFormat->wBitsPerSample = 64;
-	
-	if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-		arDevice.supportedFormats |= BufferFormat::FLOAT_64;
-	}
+    }
 
-	if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
+    pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+
+    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+        arDevice.supportedFormats |= BufferFormat::FLOAT_32;
+    }
+
+    pQueryFormat->wBitsPerSample = 64;
+
+    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+        arDevice.supportedFormats |= BufferFormat::FLOAT_64;
+    }
+
+    if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
 
         goto Exit;
-	}
+    }
 
     PropVariantClear(&varName);
 
@@ -573,9 +573,9 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     unsigned int count;
     IPropertyStore* pStore = nullptr;
     PROPVARIANT varName;
-	IAudioClient* pClient = nullptr;
+    IAudioClient* pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
-	std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
+    std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
 
     arDevice.type = aType;
 
@@ -615,7 +615,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
         goto Exit;
     }
-	
+
     if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
@@ -639,10 +639,10 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
         goto Exit;
     }
-	
-	PropVariantClear(&varName);
-	
-	if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
+
+    PropVariantClear(&varName);
+
+    if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
@@ -659,26 +659,26 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     }
 
     pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
-	
-	// Query supported channels
-	for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+
+    // Query supported channels
+    for (WORD numChannels = 1; numChannels < 10; numChannels++) {
         pQueryFormat->nChannels = numChannels;
 
         if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             arDevice.supportedChannels.push_back(numChannels);
         }
-	}
-	
-	if (arDevice.supportedChannels.size() == 0) {
+    }
+
+    if (arDevice.supportedChannels.size() == 0) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
 
         goto Exit;
-	}
-	
-	// Set nChannels to a valid value
-	pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
+    }
+
+    // Set nChannels to a valid value
+    pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
 
     // Query supported sample rates
     for (DWORD sampleRate : standardSampleRates) {
@@ -688,66 +688,66 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
-	
-	if (arDevice.sampleRates.size() == 0) {
+
+    if (arDevice.sampleRates.size() == 0) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
 
         goto Exit;
-	}
-	
-	// Set nSamplesPerSec to a valid value
-	pQueryFormat->nSamplesPerSec = arDevice.sampleRates[0];
-	
-	// Query supported buffer formats
-	pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
-	
-	for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
-		pQueryFormat->wBitsPerSample = bitDepth;
-		
-		if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+    }
+
+    // Set nSamplesPerSec to a valid value
+    pQueryFormat->nSamplesPerSec = arDevice.sampleRates[0];
+
+    // Query supported buffer formats
+    pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
+
+    for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
+        pQueryFormat->wBitsPerSample = bitDepth;
+
+        if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
             if (bitDepth == 8) {
-				arDevice.supportedFormats |= BufferFormat::U_INT_8;
-			}
-			else if (bitDepth == 16) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_16;
-			}
-			else if (bitDepth == 24) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_24;
-			}
-			else {
-				arDevice.supportedFormats |= BufferFormat::S_INT_32;
-			}
+                arDevice.supportedFormats |= BufferFormat::U_INT_8;
+            }
+            else if (bitDepth == 16) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_16;
+            }
+            else if (bitDepth == 24) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_24;
+            }
+            else {
+                arDevice.supportedFormats |= BufferFormat::S_INT_32;
+            }
         }
-	}
-	
-	pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
-	
-	if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-		arDevice.supportedFormats |= BufferFormat::FLOAT_32;
-	}
-	
-	pQueryFormat->wBitsPerSample = 64;
-	
-	if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-		arDevice.supportedFormats |= BufferFormat::FLOAT_64;
-	}
+    }
 
-	if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
+    pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+
+    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+        arDevice.supportedFormats |= BufferFormat::FLOAT_32;
+    }
+
+    pQueryFormat->wBitsPerSample = 64;
+
+    if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+        arDevice.supportedFormats |= BufferFormat::FLOAT_64;
+    }
+
+    if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
         SAFE_RELEASE(arDevice.pVolume)
         PropVariantClear(&varName);
         SAFE_RELEASE(arDevice.pDevice)
 
         goto Exit;
-	}
-	
-	PropVariantClear(&varName);
+    }
+
+    PropVariantClear(&varName);
 
     status = Exit::SUCCESS;
 
 Exit:
-	SAFE_RELEASE(pClient)
+    SAFE_RELEASE(pClient)
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pCollection)
 
@@ -765,9 +765,9 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     std::string deviceName;
     IMMEndpoint* pEndpoint = nullptr;
     EDataFlow flow;
-	IAudioClient* pClient = nullptr;
+    IAudioClient* pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
-	std::array<DWORD, 12> standardSampleRates = {8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000}; 
+    std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE, &pCollection))) {
         goto Exit;
@@ -809,144 +809,144 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&arDevice.pVolume))) {
                 PropVariantClear(&varName);
-				SAFE_RELEASE(pDevice)
+                SAFE_RELEASE(pDevice)
 
                 goto Exit;
             }
-			
-			if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(pDevice)
 
-				goto Exit;
-			}
+            if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(pDevice)
 
-			if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(pDevice)
+                goto Exit;
+            }
 
-				goto Exit;
-			}
+            if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(pDevice)
 
-			if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(pDevice)
+                goto Exit;
+            }
 
-				goto Exit;
-			}
+            if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(pDevice)
+
+                goto Exit;
+            }
 
             arDevice.name = deviceName;
             arDevice.type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
             arDevice.pDevice = pDevice;
-			
-			pDevice = nullptr;
-			
-			PropVariantClear(&varName);
-	
-			if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(arDevice.pDevice)
 
-				goto Exit;
-			}
+            pDevice = nullptr;
 
-			if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(arDevice.pDevice)
+            PropVariantClear(&varName);
 
-				goto Exit;
-			}
+            if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(arDevice.pDevice)
+
+                goto Exit;
+            }
+
+            if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&pClient))) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(arDevice.pDevice)
+
+                goto Exit;
+            }
 
             pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
-			
-			// Query supported channels
-			for (WORD numChannels = 1; numChannels < 10; numChannels++) {
-				pQueryFormat->nChannels = numChannels;
 
-				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-					arDevice.supportedChannels.push_back(numChannels);
-				}
-			}
-			
-			if (arDevice.supportedChannels.size() == 0) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(arDevice.pDevice)
+            // Query supported channels
+            for (WORD numChannels = 1; numChannels < 10; numChannels++) {
+                pQueryFormat->nChannels = numChannels;
 
-				goto Exit;
-			}
-			
-			// Set nChannels to a valid value
-			pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
+                if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+                    arDevice.supportedChannels.push_back(numChannels);
+                }
+            }
 
-			// Query supported sample rates
-			for (DWORD sampleRate : standardSampleRates) {
-				pQueryFormat->nSamplesPerSec = sampleRate;
+            if (arDevice.supportedChannels.size() == 0) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(arDevice.pDevice)
 
-				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-					arDevice.sampleRates.push_back(sampleRate);
-				}
-			}
-			
-			if (arDevice.sampleRates.size() == 0) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(arDevice.pDevice)
+                goto Exit;
+            }
 
-				goto Exit;
-			}
-			
-			// Set nSamplesPerSec to a valid value
-			pQueryFormat->nSamplesPerSec = arDevice.sampleRates[0];
-			
-			// Query supported buffer formats
-			pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
-			
-			for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
-				pQueryFormat->wBitsPerSample = bitDepth;
-				
-				if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-					if (bitDepth == 8) {
-						arDevice.supportedFormats |= BufferFormat::U_INT_8;
-					}
-					else if (bitDepth == 16) {
-						arDevice.supportedFormats |= BufferFormat::S_INT_16;
-					}
-					else if (bitDepth == 24) {
-						arDevice.supportedFormats |= BufferFormat::S_INT_24;
-					}
-					else {
-						arDevice.supportedFormats |= BufferFormat::S_INT_32;
-					}
-				}
-			}
-			
-			pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
-			
-			if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-				arDevice.supportedFormats |= BufferFormat::FLOAT_32;
-			}
-			
-			pQueryFormat->wBitsPerSample = 64;
-			
-			if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
-				arDevice.supportedFormats |= BufferFormat::FLOAT_64;
-			}
+            // Set nChannels to a valid value
+            pQueryFormat->nChannels = static_cast<WORD>(arDevice.supportedChannels[0]);
 
-			if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
-				SAFE_RELEASE(arDevice.pVolume)
-				PropVariantClear(&varName);
-				SAFE_RELEASE(arDevice.pDevice)
+            // Query supported sample rates
+            for (DWORD sampleRate : standardSampleRates) {
+                pQueryFormat->nSamplesPerSec = sampleRate;
 
-				goto Exit;
-			}
-			
-			PropVariantClear(&varName);
+                if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+                    arDevice.sampleRates.push_back(sampleRate);
+                }
+            }
+
+            if (arDevice.sampleRates.size() == 0) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(arDevice.pDevice)
+
+                goto Exit;
+            }
+
+            // Set nSamplesPerSec to a valid value
+            pQueryFormat->nSamplesPerSec = arDevice.sampleRates[0];
+
+            // Query supported buffer formats
+            pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
+
+            for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
+                pQueryFormat->wBitsPerSample = bitDepth;
+
+                if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+                    if (bitDepth == 8) {
+                        arDevice.supportedFormats |= BufferFormat::U_INT_8;
+                    }
+                    else if (bitDepth == 16) {
+                        arDevice.supportedFormats |= BufferFormat::S_INT_16;
+                    }
+                    else if (bitDepth == 24) {
+                        arDevice.supportedFormats |= BufferFormat::S_INT_24;
+                    }
+                    else {
+                        arDevice.supportedFormats |= BufferFormat::S_INT_32;
+                    }
+                }
+            }
+
+            pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+
+            if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+                arDevice.supportedFormats |= BufferFormat::FLOAT_32;
+            }
+
+            pQueryFormat->wBitsPerSample = 64;
+
+            if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
+                arDevice.supportedFormats |= BufferFormat::FLOAT_64;
+            }
+
+            if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
+                SAFE_RELEASE(arDevice.pVolume)
+                PropVariantClear(&varName);
+                SAFE_RELEASE(arDevice.pDevice)
+
+                goto Exit;
+            }
+
+            PropVariantClear(&varName);
 
             status = Exit::SUCCESS;
 
@@ -960,7 +960,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     }
 
 Exit:
-	SAFE_RELEASE(pClient)
+    SAFE_RELEASE(pClient)
     SAFE_RELEASE(pEndpoint)
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pCollection)
