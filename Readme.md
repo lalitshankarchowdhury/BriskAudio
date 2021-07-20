@@ -1,4 +1,4 @@
-A low-latency cross-platform audio API.
+An exclusive mode cross-platform audio API.
 
 Currently it can:
 
