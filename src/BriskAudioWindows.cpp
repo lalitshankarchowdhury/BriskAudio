@@ -4,13 +4,7 @@
 #include <array>
 #include <functiondiscoverykeys_devpkey.h>
 
-#define SAFE_RELEASE(punk)   \
-    if ((punk) != nullptr) { \
-        (punk)->Release();   \
-        (punk) = nullptr;    \
-    }
-
-static IMMDeviceEnumerator* spEnumerator = nullptr;
+static CComPtr<IMMDeviceEnumerator> spEnumerator = nullptr;
 static bool sIsCoInitialized = false;
 
 using namespace BriskAudio;
@@ -29,14 +23,6 @@ NativeDeviceHandle::NativeDeviceHandle()
     pOnDeviceRemove = nullptr;
     referenceCount_ = 1;
     pDeviceId_ = L" ";
-}
-
-NativeDeviceHandle::~NativeDeviceHandle()
-{
-    // Release if already not done so
-    SAFE_RELEASE(pVolume)
-    SAFE_RELEASE(pClient)
-    SAFE_RELEASE(pDevice)
 }
 
 ULONG STDMETHODCALLTYPE NativeDeviceHandle::AddRef()
@@ -84,24 +70,23 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::QueryInterface(REFIID riid, VOID**
 
 HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
 {
-    HRESULT status = S_FALSE;
-    IMMDevice* pTempDevice = nullptr;
-    IPropertyStore* pStore = nullptr;
+    CComPtr<IMMDevice> pTempDevice = nullptr;
+    CComPtr<IPropertyStore> pStore = nullptr;
     PROPVARIANT variant;
     std::string deviceName;
 
     // This function is called three times (for each device role change), so call the callback only once
     if (lstrcmpW(pDeviceId_, pwstrDeviceId) != 0 && pOnDefaultDeviceChange != nullptr) {
         if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         deviceName = CW2A(variant.pwszVal);
@@ -110,108 +95,90 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDefaultDeviceChanged(EDataFlow f
 
         // Copy current device name for comparison later
         pDeviceId_ = pwstrDeviceId;
-
-        status = S_OK;
     }
 
-Exit:
     PropVariantClear(&variant);
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pTempDevice)
 
-    return status;
+    return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceAdded(LPCWSTR pwstrDeviceId)
 {
-    HRESULT status = S_FALSE;
-    IMMDevice* pTempDevice = nullptr;
-    IPropertyStore* pStore = nullptr;
+    CComPtr<IMMDevice> pTempDevice = nullptr;
+    CComPtr<IPropertyStore> pStore = nullptr;
     PROPVARIANT variant;
     std::string deviceName;
 
     if (pOnDeviceAdd != nullptr) {
         if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         deviceName = CW2A(variant.pwszVal);
 
         pOnDeviceAdd(deviceName);
-
-        status = S_OK;
     }
 
-Exit:
     PropVariantClear(&variant);
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pTempDevice)
 
-    return status;
+    return S_OK;
 };
 
 HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceRemoved(LPCWSTR pwstrDeviceId)
 {
-    HRESULT status = S_FALSE;
-    IMMDevice* pTempDevice = nullptr;
-    IPropertyStore* pStore = nullptr;
+    CComPtr<IMMDevice> pTempDevice = nullptr;
+    CComPtr<IPropertyStore> pStore = nullptr;
     PROPVARIANT variant;
     std::string deviceName;
 
     if (pOnDeviceRemove != nullptr) {
         if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
-            goto Exit;
+            return S_FALSE;
         }
 
         deviceName = CW2A(variant.pwszVal);
 
         pOnDeviceRemove(deviceName);
-
-        status = S_OK;
     }
 
-Exit:
     PropVariantClear(&variant);
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pTempDevice)
 
-    return status;
+    return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceStateChanged(LPCWSTR pwstrDeviceId, DWORD dwNewState)
 {
-    HRESULT status = S_FALSE;
-    IMMDevice* pTempDevice = nullptr;
-    IPropertyStore* pStore = nullptr;
+    CComPtr<IMMDevice> pTempDevice = nullptr;
+    CComPtr<IPropertyStore> pStore = nullptr;
     PROPVARIANT variant;
     std::string deviceName;
 
     if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
-        goto Exit;
+        return S_FALSE;
     }
 
     if (FAILED(pTempDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-        goto Exit;
+        return S_FALSE;
     }
 
     if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
-        goto Exit;
+        return S_FALSE;
     }
 
     deviceName = CW2A(variant.pwszVal);
@@ -234,12 +201,7 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceStateChanged(LPCWSTR pwstr
         break;
     }
 
-    status = S_OK;
-
-Exit:
     PropVariantClear(&variant);
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pTempDevice)
 
     return S_OK;
 }
@@ -274,12 +236,11 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnNotify(PAUDIO_VOLUME_NOTIFICATIO
 
 bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat)
 {
-    bool status = false;
     WAVEFORMATEX format;
-    IAudioClient* pClient = nullptr;
+    CComPtr<IAudioClient> pClient = nullptr;
 
     if (FAILED(pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-        goto Exit;
+        return false;
     }
 
     format.nChannels = static_cast<WORD>(aNumChannels);
@@ -310,15 +271,10 @@ bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSa
     format.cbSize = 0;
 
     if (FAILED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &format, nullptr))) {
-        goto Exit;
+        return false;
     }
 
-    status = true;
-
-Exit:
-    SAFE_RELEASE(pClient)
-
-    return status;
+    return true;
 }
 
 Exit Device::getVolume(float& arVolume)
@@ -341,7 +297,6 @@ Exit Device::setVolume(float arVolume)
 
 Exit init()
 {
-
     // If BriskAudio is already initialized
     if (spEnumerator != nullptr) {
         return Exit::FAILURE;
@@ -367,106 +322,82 @@ Exit init()
 
 Exit getDeviceCount(unsigned int& arDeviceCount, DeviceType aType)
 {
-    Exit status = Exit::FAILURE;
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
-    IMMDeviceCollection* pCollection = nullptr;
+    CComPtr<IMMDeviceCollection> pCollection = nullptr;
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(pCollection->GetCount(&arDeviceCount))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    status = Exit::SUCCESS;
-
-Exit:
-    SAFE_RELEASE(pCollection)
-
-    return status;
+    return Exit::SUCCESS;
 }
 
 Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 {
-    Exit status = Exit::FAILURE;
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
-    IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
-    IAudioClient* pClient = nullptr;
+    CComPtr<IPropertyStore> pStore = nullptr;
+    PROPVARIANT variant;
+    CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
 
     arDevice.type = aType;
 
     if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eMultimedia, &arDevice.pDevice))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-        SAFE_RELEASE(arDevice.pDevice)
-
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-        SAFE_RELEASE(arDevice.pDevice)
-
-        goto Exit;
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
+        return Exit::FAILURE;
     }
 
-    arDevice.name = CW2A(varName.pwszVal);
+    arDevice.name = CW2A(variant.pwszVal);
 
     if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pVolume)))) {
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    PropVariantClear(&varName);
+    PropVariantClear(&variant);
 
-    if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
-
-        goto Exit;
+    if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &variant))) {
+        return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
+    pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(variant.blob.pBlobData);
 
     // Query supported channels
     for (WORD numChannels = 1; numChannels < 10; numChannels++) {
@@ -478,11 +409,9 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     }
 
     if (arDevice.supportedChannels.size() == 0) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     // Set nChannels to a valid value
@@ -498,11 +427,9 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     }
 
     if (arDevice.sampleRates.size() == 0) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     // Set nSamplesPerSec to a valid value
@@ -543,118 +470,92 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     }
 
     if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    PropVariantClear(&varName);
+    PropVariantClear(&variant);
 
-    status = Exit::SUCCESS;
-
-Exit:
-    SAFE_RELEASE(pClient)
-    SAFE_RELEASE(pStore)
-
-    return status;
+    return Exit::SUCCESS;
 }
 
 Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 {
-    Exit status = Exit::FAILURE;
     EDataFlow flow = (aType == DeviceType::PLAYBACK) ? eRender : eCapture;
-    IMMDeviceCollection* pCollection = nullptr;
+    CComPtr<IMMDeviceCollection> pCollection = nullptr;
     unsigned int count;
-    IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
-    IAudioClient* pClient = nullptr;
+    CComPtr<IPropertyStore> pStore = nullptr;
+    PROPVARIANT variant;
+    CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
 
     arDevice.type = aType;
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (aIndex >= count) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(pCollection->Item(aIndex, &arDevice.pDevice))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-        SAFE_RELEASE(arDevice.pDevice)
-
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-        SAFE_RELEASE(arDevice.pDevice)
-
-        goto Exit;
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
+        return Exit::FAILURE;
     }
 
-    arDevice.name = CW2A(varName.pwszVal);
+    arDevice.name = CW2A(variant.pwszVal);
 
     if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pVolume)))) {
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    PropVariantClear(&varName);
+    PropVariantClear(&variant);
 
-    if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
-
-        goto Exit;
+    if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &variant))) {
+        return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
+    pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(variant.blob.pBlobData);
 
     // Query supported channels
     for (WORD numChannels = 1; numChannels < 10; numChannels++) {
@@ -666,11 +567,9 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     }
 
     if (arDevice.supportedChannels.size() == 0) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     // Set nChannels to a valid value
@@ -686,11 +585,9 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     }
 
     if (arDevice.sampleRates.size() == 0) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     // Set nSamplesPerSec to a valid value
@@ -731,107 +628,91 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     }
 
     if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
-        SAFE_RELEASE(arDevice.pVolume)
-        PropVariantClear(&varName);
-        SAFE_RELEASE(arDevice.pDevice)
+        PropVariantClear(&variant);
 
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    PropVariantClear(&varName);
+    PropVariantClear(&variant);
 
-    status = Exit::SUCCESS;
-
-Exit:
-    SAFE_RELEASE(pClient)
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pCollection)
-
-    return status;
+    return Exit::SUCCESS;
 }
 
 Exit openDevice(Device& arDevice, std::string aDeviceName)
 {
-    Exit status = Exit::FAILURE;
-    IMMDeviceCollection* pCollection = nullptr;
+    CComPtr<IMMDeviceCollection> pCollection = nullptr;
     unsigned int count;
-    IMMDevice* pDevice = nullptr;
-    IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
+    PROPVARIANT variant;
     std::string deviceName;
-    IMMEndpoint* pEndpoint = nullptr;
+    CComPtr<IMMEndpoint> pEndpoint = nullptr;
     EDataFlow flow;
-    IAudioClient* pClient = nullptr;
+    CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE, &pCollection))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(pCollection->GetCount(&count))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     // Scan the list of available devices
     for (unsigned int i = 0; i < count; i++) {
+        CComPtr<IMMDevice> pDevice = nullptr;
+        CComPtr<IPropertyStore> pStore = nullptr;
+
         if (FAILED(pCollection->Item(i, &pDevice))) {
-            goto Exit;
+            return Exit::FAILURE;
         }
 
         if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
-            goto Exit;
+            return Exit::FAILURE;
         }
 
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
-            goto Exit;
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
+            return Exit::FAILURE;
         }
 
-        deviceName = CW2A(varName.pwszVal);
+        deviceName = CW2A(variant.pwszVal);
 
         // If device is found
         if (aDeviceName == deviceName) {
             if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), reinterpret_cast<void**>(&pEndpoint)))) {
-                PropVariantClear(&varName);
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             if (FAILED(pEndpoint->GetDataFlow(&flow))) {
-                PropVariantClear(&varName);
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pVolume)))) {
-                PropVariantClear(&varName);
-                SAFE_RELEASE(pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             arDevice.name = deviceName;
@@ -840,25 +721,19 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             pDevice = nullptr;
 
-            PropVariantClear(&varName);
+            PropVariantClear(&variant);
 
-            if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &varName))) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(arDevice.pDevice)
-
-                goto Exit;
+            if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &variant))) {
+                return Exit::FAILURE;
             }
 
             if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(arDevice.pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
-            pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(varName.blob.pBlobData);
+            pQueryFormat = reinterpret_cast<WAVEFORMATEX*>(variant.blob.pBlobData);
 
             // Query supported channels
             for (WORD numChannels = 1; numChannels < 10; numChannels++) {
@@ -870,11 +745,9 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             }
 
             if (arDevice.supportedChannels.size() == 0) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(arDevice.pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             // Set nChannels to a valid value
@@ -890,11 +763,9 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             }
 
             if (arDevice.sampleRates.size() == 0) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(arDevice.pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
             // Set nSamplesPerSec to a valid value
@@ -935,58 +806,40 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             }
 
             if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
-                SAFE_RELEASE(arDevice.pVolume)
-                PropVariantClear(&varName);
-                SAFE_RELEASE(arDevice.pDevice)
+                PropVariantClear(&variant);
 
-                goto Exit;
+                return Exit::FAILURE;
             }
 
-            PropVariantClear(&varName);
+            PropVariantClear(&variant);
 
-            status = Exit::SUCCESS;
-
-            break;
+            return Exit::SUCCESS;
         }
 
         // Cleanup for reuse
-        PropVariantClear(&varName);
-        pStore->Release();
-        pDevice->Release();
+        PropVariantClear(&variant);
     }
 
-Exit:
-    SAFE_RELEASE(pClient)
-    SAFE_RELEASE(pEndpoint)
-    SAFE_RELEASE(pStore)
-    SAFE_RELEASE(pCollection)
+    PropVariantClear(&variant);
 
-    return status;
+    return Exit::FAILURE;
 }
 
 Exit closeDevice(Device& arDevice)
 {
-    Exit status = Exit::FAILURE;
-
     if (arDevice.pDevice == nullptr || arDevice.pVolume == nullptr) {
         return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pVolume->UnregisterControlChangeNotify(&arDevice))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
     if (FAILED(spEnumerator->UnregisterEndpointNotificationCallback(&arDevice))) {
-        goto Exit;
+        return Exit::FAILURE;
     }
 
-    status = Exit::SUCCESS;
-
-Exit:
-    SAFE_RELEASE(arDevice.pVolume)
-    SAFE_RELEASE(arDevice.pDevice)
-
-    return status;
+    return Exit::SUCCESS;
 }
 
 Exit quit()
@@ -995,9 +848,6 @@ Exit quit()
     if (spEnumerator == nullptr) {
         return Exit::FAILURE;
     }
-
-    spEnumerator->Release();
-    spEnumerator = nullptr;
 
     // CoUninitialize() must be called only once when the program exits
     atexit(reinterpret_cast<void(__cdecl*)()>(CoUninitialize));
