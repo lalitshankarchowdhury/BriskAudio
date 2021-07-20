@@ -2,6 +2,7 @@
 
 #ifdef _WIN32
 #include <Audioclient.h>
+#include <client.h>
 #include <Endpointvolume.h>
 #include <initguid.h>
 #include <mmdeviceapi.h>
@@ -9,9 +10,9 @@
 
 namespace BriskAudio {
 struct NativeDeviceHandle : public IAudioEndpointVolumeCallback, public IMMNotificationClient {
-    IMMDevice* pDevice;
-    IAudioClient* pClient;
-    IAudioEndpointVolume* pVolume;
+    CComPtr<IMMDevice> pDevice;
+    CComPtr<IAudioClient> pClient;
+    CComPtr<IAudioEndpointVolume> pVolume;
     GUID eventContext;
     void (*pOnVolumeChange)(float aVolume);
     void (*pOnMute)();
