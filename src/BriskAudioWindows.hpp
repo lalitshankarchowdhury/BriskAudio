@@ -2,7 +2,7 @@
 
 #ifdef _WIN32
 #include <Audioclient.h>
-#include <client.h>
+#include <atlbase.h>
 #include <Endpointvolume.h>
 #include <initguid.h>
 #include <mmdeviceapi.h>
@@ -21,7 +21,7 @@ struct NativeDeviceHandle : public IAudioEndpointVolumeCallback, public IMMNotif
     void (*pOnDeviceRemove)(std::string aDeviceName);
 
     NativeDeviceHandle();
-    virtual ~NativeDeviceHandle();
+    virtual ~NativeDeviceHandle() {}
     ULONG STDMETHODCALLTYPE AddRef();
     ULONG STDMETHODCALLTYPE Release();
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID** ppvInterface);
