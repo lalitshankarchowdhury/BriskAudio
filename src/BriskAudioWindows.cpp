@@ -2,7 +2,6 @@
 #include "../include/BriskAudio.hpp"
 #include <atlstr.h>
 #include <array>
-#include <Audioclient.h>
 #include <functiondiscoverykeys_devpkey.h>
 
 #define SAFE_RELEASE(punk)   \
@@ -20,6 +19,7 @@ namespace BriskAudio {
 NativeDeviceHandle::NativeDeviceHandle()
 {
     pDevice = nullptr;
+    pClient = nullptr;
     pVolume = nullptr;
     eventContext = GUID_NULL;
     pOnVolumeChange = nullptr;
@@ -33,7 +33,9 @@ NativeDeviceHandle::NativeDeviceHandle()
 
 NativeDeviceHandle::~NativeDeviceHandle()
 {
+    // Release if already not done so
     SAFE_RELEASE(pVolume)
+    SAFE_RELEASE(pClient)
     SAFE_RELEASE(pDevice)
 }
 
@@ -85,10 +87,10 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDefaultDeviceChanged(EDataFlow f
     HRESULT status = S_FALSE;
     IMMDevice* pTempDevice = nullptr;
     IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
+    PROPVARIANT variant;
     std::string deviceName;
 
-    // This function is called three times (for each device role), so call the callback only once
+    // This function is called three times (for each device role change), so call the callback only once
     if (lstrcmpW(pDeviceId_, pwstrDeviceId) != 0 && pOnDefaultDeviceChange != nullptr) {
         if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
             goto Exit;
@@ -98,23 +100,22 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDefaultDeviceChanged(EDataFlow f
             goto Exit;
         }
 
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
             goto Exit;
         }
 
-        deviceName = CW2A(varName.pwszVal);
+        deviceName = CW2A(variant.pwszVal);
 
         pOnDefaultDeviceChange(deviceName);
 
         // Copy current device name for comparison later
         pDeviceId_ = pwstrDeviceId;
 
-        PropVariantClear(&varName);
-
         status = S_OK;
     }
 
 Exit:
+    PropVariantClear(&variant);
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pTempDevice)
 
@@ -126,7 +127,7 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceAdded(LPCWSTR pwstrDeviceI
     HRESULT status = S_FALSE;
     IMMDevice* pTempDevice = nullptr;
     IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
+    PROPVARIANT variant;
     std::string deviceName;
 
     if (pOnDeviceAdd != nullptr) {
@@ -138,20 +139,19 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceAdded(LPCWSTR pwstrDeviceI
             goto Exit;
         }
 
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
             goto Exit;
         }
 
-        deviceName = CW2A(varName.pwszVal);
+        deviceName = CW2A(variant.pwszVal);
 
         pOnDeviceAdd(deviceName);
-
-        PropVariantClear(&varName);
 
         status = S_OK;
     }
 
 Exit:
+    PropVariantClear(&variant);
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pTempDevice)
 
@@ -163,7 +163,7 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceRemoved(LPCWSTR pwstrDevic
     HRESULT status = S_FALSE;
     IMMDevice* pTempDevice = nullptr;
     IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
+    PROPVARIANT variant;
     std::string deviceName;
 
     if (pOnDeviceRemove != nullptr) {
@@ -175,20 +175,19 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceRemoved(LPCWSTR pwstrDevic
             goto Exit;
         }
 
-        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+        if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
             goto Exit;
         }
 
-        deviceName = CW2A(varName.pwszVal);
+        deviceName = CW2A(variant.pwszVal);
 
         pOnDeviceRemove(deviceName);
-
-        PropVariantClear(&varName);
 
         status = S_OK;
     }
 
 Exit:
+    PropVariantClear(&variant);
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pTempDevice)
 
@@ -200,7 +199,7 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceStateChanged(LPCWSTR pwstr
     HRESULT status = S_FALSE;
     IMMDevice* pTempDevice = nullptr;
     IPropertyStore* pStore = nullptr;
-    PROPVARIANT varName;
+    PROPVARIANT variant;
     std::string deviceName;
 
     if (FAILED(spEnumerator->GetDevice(pwstrDeviceId, &pTempDevice))) {
@@ -211,11 +210,11 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceStateChanged(LPCWSTR pwstr
         goto Exit;
     }
 
-    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &varName))) {
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
         goto Exit;
     }
 
-    deviceName = CW2A(varName.pwszVal);
+    deviceName = CW2A(variant.pwszVal);
 
     switch (dwNewState) {
     case DEVICE_STATE_DISABLED:
@@ -235,11 +234,10 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnDeviceStateChanged(LPCWSTR pwstr
         break;
     }
 
-    PropVariantClear(&varName);
-
     status = S_OK;
 
 Exit:
+    PropVariantClear(&variant);
     SAFE_RELEASE(pStore)
     SAFE_RELEASE(pTempDevice)
 
