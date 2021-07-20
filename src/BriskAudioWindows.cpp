@@ -343,7 +343,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     PROPVARIANT variant;
     CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
-    std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
+    std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
 
     arDevice.type = aType;
 
@@ -438,7 +438,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     // Query supported buffer formats
     pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
 
-    for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
+    for (WORD bitDepth = 8; bitDepth <= 32; bitDepth+=8) {
         pQueryFormat->wBitsPerSample = bitDepth;
 
         if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
@@ -489,7 +489,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     PROPVARIANT variant;
     CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
-    std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
+    std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
 
     arDevice.type = aType;
 
@@ -596,7 +596,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     // Query supported buffer formats
     pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
 
-    for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
+    for (WORD bitDepth = 8; bitDepth <= 32; bitDepth+=8) {
         pQueryFormat->wBitsPerSample = bitDepth;
 
         if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
@@ -648,7 +648,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     EDataFlow flow;
     CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
-    std::array<DWORD, 12> standardSampleRates = { 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000 };
+    std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
 
     if (FAILED(spEnumerator->EnumAudioEndpoints(eAll, DEVICE_STATE_ACTIVE, &pCollection))) {
         return Exit::FAILURE;
@@ -774,7 +774,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             // Query supported buffer formats
             pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
 
-            for (WORD bitDepth = 8; bitDepth <= 32; bitDepth++) {
+            for (WORD bitDepth = 8; bitDepth <= 32; bitDepth+=8) {
                 pQueryFormat->wBitsPerSample = bitDepth;
 
                 if (pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) == S_OK) {
