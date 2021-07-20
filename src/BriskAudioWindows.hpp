@@ -1,14 +1,16 @@
 #pragma once
 
 #ifdef _WIN32
-#include <string>
+#include <Audioclient.h>
 #include <Endpointvolume.h>
 #include <initguid.h>
 #include <mmdeviceapi.h>
+#include <string>
 
 namespace BriskAudio {
 struct NativeDeviceHandle : public IAudioEndpointVolumeCallback, public IMMNotificationClient {
     IMMDevice* pDevice;
+    IAudioClient* pClient;
     IAudioEndpointVolume* pVolume;
     GUID eventContext;
     void (*pOnVolumeChange)(float aVolume);
