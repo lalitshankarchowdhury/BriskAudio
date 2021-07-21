@@ -345,55 +345,55 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
 
-    arDevice.type = aType;
-
     if (FAILED(spEnumerator->GetDefaultAudioEndpoint(flow, eMultimedia, &arDevice.pDevice))) {
         return Exit::FAILURE;
     }
 
-    if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+    if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
         return Exit::FAILURE;
     }
-
-    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
-        return Exit::FAILURE;
-    }
-
-    arDevice.name = CW2A(variant.pwszVal);
 
     if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pVolume)))) {
-        PropVariantClear(&variant);
-
+        return Exit::FAILURE;
+    }
+	
+    if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
         return Exit::FAILURE;
     }
 
     if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
-        PropVariantClear(&variant);
-
         return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
-        PropVariantClear(&variant);
-
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		
         return Exit::FAILURE;
     }
 
-    if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
-        PropVariantClear(&variant);
-
+    if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
+		
         return Exit::FAILURE;
     }
+
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
+		
+        return Exit::FAILURE;
+    }
+
+    arDevice.name = CW2A(variant.pwszVal);
+	arDevice.type = aType;
 
     PropVariantClear(&variant);
 
     if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &variant))) {
-        return Exit::FAILURE;
-    }
-
-    if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-        PropVariantClear(&variant);
-
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
+		
         return Exit::FAILURE;
     }
 
@@ -410,6 +410,8 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 
     if (arDevice.supportedChannels.size() == 0) {
         PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
         return Exit::FAILURE;
     }
@@ -428,6 +430,8 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 
     if (arDevice.sampleRates.size() == 0) {
         PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
         return Exit::FAILURE;
     }
@@ -471,6 +475,8 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
 
     if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
         PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
         return Exit::FAILURE;
     }
@@ -491,8 +497,6 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
 
-    arDevice.type = aType;
-
     if (FAILED(spEnumerator->EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE, &pCollection))) {
         return Exit::FAILURE;
     }
@@ -508,50 +512,52 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     if (FAILED(pCollection->Item(aIndex, &arDevice.pDevice))) {
         return Exit::FAILURE;
     }
-
-    if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+	
+    if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
         return Exit::FAILURE;
     }
-
-    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
-        return Exit::FAILURE;
-    }
-
-    arDevice.name = CW2A(variant.pwszVal);
 
     if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pVolume)))) {
-        PropVariantClear(&variant);
-
         return Exit::FAILURE;
     }
-
+	
+    if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
+        return Exit::FAILURE;
+    }
+	
     if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
-        PropVariantClear(&variant);
-
         return Exit::FAILURE;
     }
 
     if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
-        PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
 
         return Exit::FAILURE;
     }
 
-    if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
-        PropVariantClear(&variant);
-
+    if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
+		
         return Exit::FAILURE;
     }
+
+    if (FAILED(pStore->GetValue(PKEY_Device_FriendlyName, &variant))) {
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
+		
+        return Exit::FAILURE;
+    }
+	
+    arDevice.name = CW2A(variant.pwszVal);
+	arDevice.type = aType;
 
     PropVariantClear(&variant);
 
     if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &variant))) {
-        return Exit::FAILURE;
-    }
-
-    if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-        PropVariantClear(&variant);
-
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
+		
         return Exit::FAILURE;
     }
 
@@ -568,6 +574,8 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
     if (arDevice.supportedChannels.size() == 0) {
         PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
         return Exit::FAILURE;
     }
@@ -586,6 +594,8 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
     if (arDevice.sampleRates.size() == 0) {
         PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
         return Exit::FAILURE;
     }
@@ -629,6 +639,8 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
 
     if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
         PropVariantClear(&variant);
+		spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
         return Exit::FAILURE;
     }
@@ -679,24 +691,24 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
         // If device is found
         if (aDeviceName == deviceName) {
-            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), reinterpret_cast<void**>(&pEndpoint)))) {
+			if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
                 PropVariantClear(&variant);
 
                 return Exit::FAILURE;
             }
-
-            if (FAILED(pEndpoint->GetDataFlow(&flow))) {
-                PropVariantClear(&variant);
-
-                return Exit::FAILURE;
-            }
-
+			
             if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pVolume)))) {
                 PropVariantClear(&variant);
 
                 return Exit::FAILURE;
             }
+			
+            if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
+                PropVariantClear(&variant);
 
+                return Exit::FAILURE;
+            }
+			
             if (FAILED(spEnumerator->RegisterEndpointNotificationCallback(&arDevice))) {
                 PropVariantClear(&variant);
 
@@ -704,12 +716,23 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             }
 
             if (FAILED(arDevice.pVolume->RegisterControlChangeNotify(&arDevice))) {
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+		        PropVariantClear(&variant);
+
+                return Exit::FAILURE;
+            }
+			
+            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), reinterpret_cast<void**>(&pEndpoint)))) {
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+				arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
                 PropVariantClear(&variant);
 
                 return Exit::FAILURE;
             }
 
-            if (FAILED(CoCreateGuid(&arDevice.eventContext))) {
+            if (FAILED(pEndpoint->GetDataFlow(&flow))) {
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+				arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
                 PropVariantClear(&variant);
 
                 return Exit::FAILURE;
@@ -724,12 +747,9 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             PropVariantClear(&variant);
 
             if (FAILED(pStore->GetValue(PKEY_AudioEngine_DeviceFormat, &variant))) {
-                return Exit::FAILURE;
-            }
-
-            if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-                PropVariantClear(&variant);
-
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+				arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);				
+			
                 return Exit::FAILURE;
             }
 
@@ -746,6 +766,8 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             if (arDevice.supportedChannels.size() == 0) {
                 PropVariantClear(&variant);
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+				arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
                 return Exit::FAILURE;
             }
@@ -764,6 +786,8 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             if (arDevice.sampleRates.size() == 0) {
                 PropVariantClear(&variant);
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+				arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
                 return Exit::FAILURE;
             }
@@ -807,6 +831,8 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             if (arDevice.supportedFormats == static_cast<BufferFormat>(0)) {
                 PropVariantClear(&variant);
+				spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
+				arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
 
                 return Exit::FAILURE;
             }
