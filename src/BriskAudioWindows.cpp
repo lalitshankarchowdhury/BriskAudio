@@ -237,11 +237,6 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnNotify(PAUDIO_VOLUME_NOTIFICATIO
 bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat)
 {
     WAVEFORMATEX format;
-    CComPtr<IAudioClient> pClient = nullptr;
-
-    if (FAILED(pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
-        return false;
-    }
 
     format.nChannels = static_cast<WORD>(aNumChannels);
     format.nSamplesPerSec = aSampleRate;
