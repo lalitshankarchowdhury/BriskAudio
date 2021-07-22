@@ -9,6 +9,13 @@
 #include <string>
 
 namespace BriskAudio {
+struct NativeStreamHandle {
+    CComPtr<IAudioRenderClient> pRenderClient;
+    CComPtr<IAudioCaptureClient> pCaptureClient;
+
+    NativeStreamHandle();
+};
+
 struct NativeDeviceHandle : public IAudioEndpointVolumeCallback, public IMMNotificationClient {
     CComPtr<IMMDevice> pDevice;
     CComPtr<IAudioClient> pClient;
@@ -21,7 +28,7 @@ struct NativeDeviceHandle : public IAudioEndpointVolumeCallback, public IMMNotif
     void (*pOnDeviceRemove)(std::string aDeviceName);
 
     NativeDeviceHandle();
-    virtual ~NativeDeviceHandle() {}
+    virtual ~NativeDeviceHandle();
     ULONG STDMETHODCALLTYPE AddRef();
     ULONG STDMETHODCALLTYPE Release();
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID** ppvInterface);
