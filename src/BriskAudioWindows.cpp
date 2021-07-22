@@ -710,7 +710,6 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     CComPtr<IMMDeviceCollection> pCollection = nullptr;
     unsigned int count;
     PROPVARIANT variant;
-    std::string deviceName;
     EDataFlow flow;
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
@@ -740,7 +739,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             return Exit::FAILURE;
         }
 
-        deviceName = CW2A(variant.pwszVal);
+        arDevice.name = CW2A(variant.pwszVal);
 
         // If device is found
         if (aDeviceName == deviceName) {
@@ -791,7 +790,6 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
                 return Exit::FAILURE;
             }
 
-            arDevice.name = deviceName;
             arDevice.type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
 
             PropVariantClear(&variant);
