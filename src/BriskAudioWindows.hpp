@@ -2,8 +2,8 @@
 
 #ifdef _WIN32
 #include <Audioclient.h>
-#include <atlbase.h>
 #include <Endpointvolume.h>
+#include <atlbase.h>
 #include <initguid.h>
 #include <mmdeviceapi.h>
 #include <string>
