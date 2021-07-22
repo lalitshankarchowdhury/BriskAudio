@@ -239,7 +239,10 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnNotify(PAUDIO_VOLUME_NOTIFICATIO
 
 Stream::Stream()
 {
-    type_ = static_cast<StreamType>(0);
+    numChannels_ = 0;
+    sampleRate_ = 0;
+    format_ = static_cast<BufferFormat>(0);
+    latency_ = 0.0f;
 }
 
 Device::Device()
@@ -247,6 +250,24 @@ Device::Device()
     name = "??????";
     type = static_cast<DeviceType>(0);
     supportedFormats = static_cast<BufferFormat>(0);
+}
+
+Exit Device::getVolume(float& arVolume)
+{
+    if (FAILED(pVolume->GetMasterVolumeLevelScalar(&arVolume))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
+}
+
+Exit Device::setVolume(float arVolume)
+{
+    if (FAILED(pVolume->SetMasterVolumeLevelScalar(arVolume, &eventContext))) {
+        return Exit::FAILURE;
+    }
+
+    return Exit::SUCCESS;
 }
 
 bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat)
@@ -282,22 +303,43 @@ bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSa
     return true;
 }
 
-Exit Device::getVolume(float& arVolume)
+Exit Device::openStream(Stream& aStream, unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat, float aLatency)
 {
-    if (FAILED(pVolume->GetMasterVolumeLevelScalar(&arVolume))) {
+    REFERENCE_TIME latency = static_cast<REFERENCE_TIME>(aLatency * 10000);
+    WAVEFORMATEX format;
+
+    format.nChannels = static_cast<WORD>(aNumChannels);
+    format.nSamplesPerSec = aSampleRate;
+    format.wFormatTag = static_cast<WORD>(((aFormat == BufferFormat::FLOAT_32 || aFormat == BufferFormat::FLOAT_64) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM));
+
+    if (aFormat == BufferFormat::U_INT_8) {
+        format.wBitsPerSample = 8;
+    } else if (aFormat == BufferFormat::S_INT_16) {
+        format.wBitsPerSample = 16;
+    } else if (aFormat == BufferFormat::S_INT_24) {
+        format.wBitsPerSample = 24;
+    } else if (aFormat == BufferFormat::S_INT_32) {
+        format.wBitsPerSample = 32;
+    } else if (aFormat == BufferFormat::FLOAT_32) {
+        format.wBitsPerSample = 32;
+    } else {
+        format.wBitsPerSample = 64;
+    }
+
+    format.nBlockAlign = format.nChannels * (format.wBitsPerSample / 8);
+    format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+    format.cbSize = 0;
+
+    if (FAILED(pClient->Initialize(AUDCLNT_SHAREMODE_EXCLUSIVE, AUDCLNT_STREAMFLAGS_EVENTCALLBACK, latency, latency, &format, &eventContext))) {
         return Exit::FAILURE;
     }
 
     return Exit::SUCCESS;
 }
 
-Exit Device::setVolume(float arVolume)
+Exit Device::closeStream(Stream& aStream)
 {
-    if (FAILED(pVolume->SetMasterVolumeLevelScalar(arVolume, &eventContext))) {
-        return Exit::FAILURE;
-    }
-
-    return Exit::SUCCESS;
+    return Exit::FAILURE;
 }
 
 Exit init()
@@ -669,9 +711,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
     unsigned int count;
     PROPVARIANT variant;
     std::string deviceName;
-    CComPtr<IMMEndpoint> pEndpoint = nullptr;
     EDataFlow flow;
-    CComPtr<IAudioClient> pClient = nullptr;
     WAVEFORMATEX* pQueryFormat = nullptr;
     std::array<DWORD, 15> standardSampleRates = { 8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000 };
 
@@ -685,14 +725,14 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
     // Scan the list of available devices
     for (unsigned int i = 0; i < count; i++) {
-        CComPtr<IMMDevice> pDevice = nullptr;
         CComPtr<IPropertyStore> pStore = nullptr;
+        CComPtr<IMMEndpoint> pEndpoint = nullptr;
 
-        if (FAILED(pCollection->Item(i, &pDevice))) {
+        if (FAILED(pCollection->Item(i, &arDevice.pDevice))) {
             return Exit::FAILURE;
         }
 
-        if (FAILED(pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
+        if (FAILED(arDevice.pDevice->OpenPropertyStore(STGM_READ, &pStore))) {
             return Exit::FAILURE;
         }
 
@@ -704,7 +744,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
         // If device is found
         if (aDeviceName == deviceName) {
-            if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&pClient)))) {
+            if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pClient)))) {
                 PropVariantClear(&variant);
 
                 return Exit::FAILURE;
@@ -735,7 +775,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
                 return Exit::FAILURE;
             }
 
-            if (FAILED(pDevice->QueryInterface(__uuidof(IMMEndpoint), reinterpret_cast<void**>(&pEndpoint)))) {
+            if (FAILED(arDevice.pDevice->QueryInterface(__uuidof(IMMEndpoint), reinterpret_cast<void**>(&pEndpoint)))) {
                 spEnumerator->UnregisterEndpointNotificationCallback(&arDevice);
                 arDevice.pVolume->UnregisterControlChangeNotify(&arDevice);
                 PropVariantClear(&variant);
@@ -753,9 +793,6 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             arDevice.name = deviceName;
             arDevice.type = (flow == eRender) ? DeviceType::PLAYBACK : DeviceType::CAPTURE;
-            arDevice.pDevice = pDevice;
-
-            pDevice = nullptr;
 
             PropVariantClear(&variant);
 
@@ -772,7 +809,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             for (WORD numChannels = 1; numChannels < 10; numChannels++) {
                 pQueryFormat->nChannels = numChannels;
 
-                if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+                if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                     arDevice.supportedChannels.push_back(numChannels);
                 }
             }
@@ -792,7 +829,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             for (DWORD sampleRate : standardSampleRates) {
                 pQueryFormat->nSamplesPerSec = sampleRate;
 
-                if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+                if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                     arDevice.sampleRates.push_back(sampleRate);
                 }
             }
@@ -813,37 +850,37 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
             pQueryFormat->wBitsPerSample = 8;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+            if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::U_INT_8;
             }
 
             pQueryFormat->wBitsPerSample = 16;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+            if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::S_INT_16;
             }
 
             pQueryFormat->wBitsPerSample = 24;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+            if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::S_INT_24;
             }
 
             pQueryFormat->wBitsPerSample = 32;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+            if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::S_INT_32;
             }
 
             pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+            if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::FLOAT_32;
             }
 
             pQueryFormat->wBitsPerSample = 64;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+            if (SUCCEEDED(arDevice.pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::FLOAT_64;
             }
 
