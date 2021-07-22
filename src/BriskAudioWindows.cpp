@@ -1,6 +1,5 @@
 #ifdef _WIN32
 #include "../include/BriskAudio.hpp"
-#include <atlstr.h>
 #include <array>
 #include <functiondiscoverykeys_devpkey.h>
 
@@ -10,6 +9,12 @@ static bool sIsCoInitialized = false;
 using namespace BriskAudio;
 
 namespace BriskAudio {
+NativeStreamHandle::NativeStreamHandle()
+{
+    pRenderClient = nullptr;
+    pCaptureClient = nullptr;
+}
+
 NativeDeviceHandle::NativeDeviceHandle()
 {
     pDevice = nullptr;
@@ -24,6 +29,8 @@ NativeDeviceHandle::NativeDeviceHandle()
     referenceCount_ = 1;
     pDeviceId_ = L" ";
 }
+
+NativeDeviceHandle::~NativeDeviceHandle() { }
 
 ULONG STDMETHODCALLTYPE NativeDeviceHandle::AddRef()
 {
@@ -48,18 +55,15 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::QueryInterface(REFIID riid, VOID**
 
         // Since both IMMNotificationClient and IAudioEndpointVolumeCallback inherit IUnknown, the compiler needs more info on how to typecast
         *ppvInterface = static_cast<IUnknown*>(static_cast<IMMNotificationClient*>(this));
-    }
-    else if (riid == __uuidof(IMMNotificationClient)) {
+    } else if (riid == __uuidof(IMMNotificationClient)) {
         AddRef();
 
         *ppvInterface = static_cast<IMMNotificationClient*>(this);
-    }
-    else if (riid == __uuidof(IAudioEndpointVolumeCallback)) {
+    } else if (riid == __uuidof(IAudioEndpointVolumeCallback)) {
         AddRef();
 
         *ppvInterface = static_cast<IAudioEndpointVolumeCallback*>(this);
-    }
-    else {
+    } else {
         *ppvInterface = nullptr;
 
         return E_NOINTERFACE;
@@ -223,8 +227,7 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnNotify(PAUDIO_VOLUME_NOTIFICATIO
             if (pOnMute != nullptr) {
                 pOnMute();
             }
-        }
-        else {
+        } else {
             if (pOnVolumeChange != nullptr) {
                 pOnVolumeChange(pNotify->fMasterVolume);
             }
@@ -232,6 +235,18 @@ HRESULT STDMETHODCALLTYPE NativeDeviceHandle::OnNotify(PAUDIO_VOLUME_NOTIFICATIO
     }
 
     return S_OK;
+}
+
+Stream::Stream()
+{
+    type_ = static_cast<StreamType>(0);
+}
+
+Device::Device()
+{
+    name = "??????";
+    type = static_cast<DeviceType>(0);
+    supportedFormats = static_cast<BufferFormat>(0);
 }
 
 bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat)
@@ -244,20 +259,15 @@ bool Device::isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSa
 
     if (aFormat == BufferFormat::U_INT_8) {
         format.wBitsPerSample = 8;
-    }
-    else if (aFormat == BufferFormat::S_INT_16) {
+    } else if (aFormat == BufferFormat::S_INT_16) {
         format.wBitsPerSample = 16;
-    }
-    else if (aFormat == BufferFormat::S_INT_24) {
+    } else if (aFormat == BufferFormat::S_INT_24) {
         format.wBitsPerSample = 24;
-    }
-    else if (aFormat == BufferFormat::S_INT_32) {
+    } else if (aFormat == BufferFormat::S_INT_32) {
         format.wBitsPerSample = 32;
-    }
-    else if (aFormat == BufferFormat::FLOAT_32) {
+    } else if (aFormat == BufferFormat::FLOAT_32) {
         format.wBitsPerSample = 32;
-    }
-    else {
+    } else {
         format.wBitsPerSample = 64;
     }
 
@@ -398,7 +408,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     for (WORD numChannels = 1; numChannels < 10; numChannels++) {
         pQueryFormat->nChannels = numChannels;
 
-        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
             arDevice.supportedChannels.push_back(numChannels);
         }
     }
@@ -418,7 +428,7 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     for (DWORD sampleRate : standardSampleRates) {
         pQueryFormat->nSamplesPerSec = sampleRate;
 
-        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
@@ -438,38 +448,38 @@ Exit openDefaultDevice(Device& arDevice, DeviceType aType)
     pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
 
     pQueryFormat->wBitsPerSample = 8;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::U_INT_8;
-	}
-	
-	pQueryFormat->wBitsPerSample = 16;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::S_INT_16;
-	}
-	
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::U_INT_8;
+    }
+
+    pQueryFormat->wBitsPerSample = 16;
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::S_INT_16;
+    }
+
     pQueryFormat->wBitsPerSample = 24;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::S_INT_24;
-	}
-	
-	pQueryFormat->wBitsPerSample = 32;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::S_INT_32;
-	}
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::S_INT_24;
+    }
+
+    pQueryFormat->wBitsPerSample = 32;
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::S_INT_32;
+    }
 
     pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
 
-    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
         arDevice.supportedFormats |= BufferFormat::FLOAT_32;
     }
 
     pQueryFormat->wBitsPerSample = 64;
 
-    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
         arDevice.supportedFormats |= BufferFormat::FLOAT_64;
     }
 
@@ -567,7 +577,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     for (WORD numChannels = 1; numChannels < 10; numChannels++) {
         pQueryFormat->nChannels = numChannels;
 
-        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
             arDevice.supportedChannels.push_back(numChannels);
         }
     }
@@ -587,7 +597,7 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     for (DWORD sampleRate : standardSampleRates) {
         pQueryFormat->nSamplesPerSec = sampleRate;
 
-        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+        if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
             arDevice.sampleRates.push_back(sampleRate);
         }
     }
@@ -607,38 +617,38 @@ Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType)
     pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
 
     pQueryFormat->wBitsPerSample = 8;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::U_INT_8;
-	}
-	
-	pQueryFormat->wBitsPerSample = 16;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::S_INT_16;
-	}
-	
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::U_INT_8;
+    }
+
+    pQueryFormat->wBitsPerSample = 16;
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::S_INT_16;
+    }
+
     pQueryFormat->wBitsPerSample = 24;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::S_INT_24;
-	}
-	
-	pQueryFormat->wBitsPerSample = 32;
-	
-	if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-		arDevice.supportedFormats |= BufferFormat::S_INT_32;
-	}
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::S_INT_24;
+    }
+
+    pQueryFormat->wBitsPerSample = 32;
+
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+        arDevice.supportedFormats |= BufferFormat::S_INT_32;
+    }
 
     pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
 
-    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
         arDevice.supportedFormats |= BufferFormat::FLOAT_32;
     }
 
     pQueryFormat->wBitsPerSample = 64;
 
-    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+    if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
         arDevice.supportedFormats |= BufferFormat::FLOAT_64;
     }
 
@@ -764,7 +774,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             for (WORD numChannels = 1; numChannels < 10; numChannels++) {
                 pQueryFormat->nChannels = numChannels;
 
-                if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+                if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                     arDevice.supportedChannels.push_back(numChannels);
                 }
             }
@@ -784,7 +794,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             for (DWORD sampleRate : standardSampleRates) {
                 pQueryFormat->nSamplesPerSec = sampleRate;
 
-                if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+                if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                     arDevice.sampleRates.push_back(sampleRate);
                 }
             }
@@ -803,39 +813,39 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
             // Query supported buffer formats
             pQueryFormat->wFormatTag = WAVE_FORMAT_PCM;
 
-			pQueryFormat->wBitsPerSample = 8;
-			
-			if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-				arDevice.supportedFormats |= BufferFormat::U_INT_8;
-			}
-			
-			pQueryFormat->wBitsPerSample = 16;
-			
-			if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_16;
-			}
-			
-			pQueryFormat->wBitsPerSample = 24;
-			
-			if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_24;
-			}
-			
-			pQueryFormat->wBitsPerSample = 32;
-			
-			if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
-				arDevice.supportedFormats |= BufferFormat::S_INT_32;
-			}
+            pQueryFormat->wBitsPerSample = 8;
+
+            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+                arDevice.supportedFormats |= BufferFormat::U_INT_8;
+            }
+
+            pQueryFormat->wBitsPerSample = 16;
+
+            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_16;
+            }
+
+            pQueryFormat->wBitsPerSample = 24;
+
+            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_24;
+            }
+
+            pQueryFormat->wBitsPerSample = 32;
+
+            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
+                arDevice.supportedFormats |= BufferFormat::S_INT_32;
+            }
 
             pQueryFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::FLOAT_32;
             }
 
             pQueryFormat->wBitsPerSample = 64;
 
-            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr) )) {
+            if (SUCCEEDED(pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, pQueryFormat, nullptr))) {
                 arDevice.supportedFormats |= BufferFormat::FLOAT_64;
             }
 
