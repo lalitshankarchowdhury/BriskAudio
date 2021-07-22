@@ -1,6 +1,6 @@
+#include "../include/BriskAudio.hpp"
 #include <cassert>
 #include <iostream>
-#include "../include/BriskAudio.hpp"
 
 using namespace BriskAudio;
 
