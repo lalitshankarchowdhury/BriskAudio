@@ -9,6 +9,11 @@ enum class Exit {
     FAILURE
 };
 
+enum class StreamType {
+    PLAYBACK,
+    CAPTURE
+};
+
 enum class DeviceType {
     PLAYBACK,
     CAPTURE
@@ -87,7 +92,13 @@ inline constexpr BufferFormat operator>>=(BufferFormat& left, BufferFormat right
     return left;
 }
 
-// NativeDeviceHandle is defined in platform-specific headers
+struct Stream : public NativeStreamHandle {
+    Stream();
+
+private:
+    StreamType type_;
+};
+
 struct Device : public NativeDeviceHandle {
     std::string name;
     DeviceType type;
@@ -95,13 +106,7 @@ struct Device : public NativeDeviceHandle {
     std::vector<unsigned int> sampleRates;
     BufferFormat supportedFormats;
 
-    Device()
-    {
-        name = "??????";
-        type = static_cast<DeviceType>(0);
-        supportedFormats = static_cast<BufferFormat>(0);
-    }
-
+    Device();
     Exit getVolume(float& arVolume);
     Exit setVolume(float aVolume);
     bool isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat);
