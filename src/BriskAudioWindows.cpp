@@ -742,7 +742,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
         arDevice.name = CW2A(variant.pwszVal);
 
         // If device is found
-        if (aDeviceName == deviceName) {
+        if (aDeviceName == arDevice.name) {
             if (FAILED(arDevice.pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&arDevice.pClient)))) {
                 PropVariantClear(&variant);
 
