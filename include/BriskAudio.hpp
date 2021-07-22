@@ -92,10 +92,10 @@ struct Stream : public NativeStreamHandle {
     Stream();
 
 private:
-    float latency_;
     unsigned int numChannels_;
     unsigned int sampleRate_;
     BufferFormat format_;
+    float latency_;
 };
 
 struct Device : public NativeDeviceHandle {
