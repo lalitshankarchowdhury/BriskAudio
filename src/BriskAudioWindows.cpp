@@ -898,6 +898,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
         }
 
         // Cleanup for reuse
+        closeDevice(arDevice);
         PropVariantClear(&variant);
     }
 
@@ -908,7 +909,7 @@ Exit openDevice(Device& arDevice, std::string aDeviceName)
 
 Exit closeDevice(Device& arDevice)
 {
-    if (arDevice.pDevice == nullptr || arDevice.pVolume == nullptr) {
+    if (arDevice.pDevice == nullptr || arDevice.pClient == nullptr || arDevice.pVolume == nullptr) {
         return Exit::FAILURE;
     }
 
