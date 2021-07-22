@@ -9,11 +9,6 @@ enum class Exit {
     FAILURE
 };
 
-enum class StreamType {
-    PLAYBACK,
-    CAPTURE
-};
-
 enum class DeviceType {
     PLAYBACK,
     CAPTURE
@@ -97,12 +92,15 @@ struct Stream : public NativeStreamHandle {
     Stream();
 
 private:
-    StreamType type_;
+    float latency_;
+    unsigned int numChannels_;
+    unsigned int sampleRate_;
+    BufferFormat format_;
 };
 
 struct Device : public NativeDeviceHandle {
-    std::string name;
     DeviceType type;
+    std::string name;
     std::vector<unsigned int> supportedChannels;
     std::vector<unsigned int> sampleRates;
     BufferFormat supportedFormats;
@@ -111,12 +109,14 @@ struct Device : public NativeDeviceHandle {
     Exit getVolume(float& arVolume);
     Exit setVolume(float aVolume);
     bool isStreamFormatSupported(unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat);
+    Exit openStream(Stream& aStream, unsigned int aNumChannels, unsigned int aSampleRate, BufferFormat aFormat, float aLatency);
+    Exit closeStream(Stream& aStream);
 };
 
 Exit init();
 Exit getDeviceCount(unsigned int& arDeviceCount, DeviceType aType);
 Exit openDefaultDevice(Device& arDevice, DeviceType aType);
-Exit openDevice(Device& arDevice, unsigned int aIndex, DeviceType aType);
+Exit openDevice(Device& arDevice, DeviceType aType, unsigned int aIndex);
 Exit openDevice(Device& arDevice, std::string aDeviceName);
 Exit closeDevice(Device& arDevice);
 Exit quit();
