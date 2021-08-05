@@ -1,3 +1,5 @@
+(Inactive project, will resume later)
+
 An exclusive mode cross-platform audio API.
 
 Currently it can:
