@@ -1,9 +1,1 @@
-(Inactive project, will resume later)
-
-An exclusive mode cross-platform audio API.
-
-Currently it can:
-
-* Enumerate audio endpoints (Devices) on Windows.
-
-* Notify about device status changes on Windows.
+Display active audio endpoint (speaker, microphone) details on Windows.
