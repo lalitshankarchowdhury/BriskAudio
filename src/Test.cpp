@@ -2,22 +2,84 @@
 #include <cassert>
 #include <iostream>
 
-using namespace BriskAudio;
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define YELLOW "\033[33m"
+#define BLUE "\033[34m"
+#define GRAY "\033[90m"
+#define DEFAULT "\033[0m"
+
+void onPlaybackDeviceMuted(std::string deviceName) {
+	std::cerr << YELLOW "MUTED PLAYBACK DEVICE: " << deviceName << DEFAULT << std::endl;
+}
+
+void onCaptureDeviceMuted(std::string deviceName) {
+	std::cerr << YELLOW "MUTED CAPTURE DEVICE: " << deviceName << DEFAULT << std::endl;
+}
+
+void onDefaultPlaybackDeviceChanged(std::string deviceName) {
+	std::cerr << BLUE "DEFAULT PLAYBACK DEVICE: " << deviceName << DEFAULT << std::endl;
+}
+
+void onDefaultCaptureDeviceChanged(std::string deviceName) {
+	std::cerr << BLUE "DEFAULT CAPTURE DEVICE: " << deviceName << DEFAULT << std::endl;
+}
+
+void onAnyDeviceAdded(std::string deviceName) {
+	std::cerr << GREEN "ADDED DEVICE: " << deviceName << DEFAULT << std::endl;
+}
+
+void onAnyDeviceRemoved(std::string deviceName) {
+	std::cerr << RED "REMOVED DEVICE: " << deviceName << DEFAULT << std::endl;
+}
+
+void onAnyDeviceStateChange(std::string deviceName, std::string state) {
+	std::cerr << GRAY << state << " DEVICE: " << deviceName << DEFAULT << std::endl;
+}
 
 int main()
 {
-    assert(init() == Exit::SUCCESS);
+	if (BriskAudio::init() == BriskAudio::Exit::FAILURE) {
+		std::cerr << "Failed to initialize BriskAudio";
+		return EXIT_FAILURE;
+	}
 
-    Device device;
-    Stream stream;
+	BriskAudio::Device playbackDevice, captureDevice;
 
-    assert(openDefaultDevice(device, DeviceType::PLAYBACK) == Exit::SUCCESS);
+	if (openDefaultDevice(playbackDevice, BriskAudio::DeviceType::PLAYBACK) == BriskAudio::Exit::FAILURE) {
+		std::cerr << "Failed to open default playback device";
+		BriskAudio::quit();
+		return EXIT_FAILURE;
+	}
 
-    assert(device.openStream(stream, 2, 44100, BufferFormat::U_INT_8, 11.6f) == Exit::SUCCESS);
+	if (openDefaultDevice(captureDevice, BriskAudio::DeviceType::CAPTURE) == BriskAudio::Exit::FAILURE) {
+		std::cerr << "Failed to open default capture device";
+		BriskAudio::quit();
+		return EXIT_FAILURE;
+	}
 
-    std::cin.get();
+	playbackDevice.pOnMute = onPlaybackDeviceMuted;
+	playbackDevice.pOnDefaultDeviceChange = onDefaultPlaybackDeviceChanged;
+	playbackDevice.pOnAnyDeviceAdd = onAnyDeviceAdded;
+	playbackDevice.pOnAnyDeviceRemove = onAnyDeviceRemoved;
+	playbackDevice.pOnAnyDeviceStateChange = onAnyDeviceStateChange;
+	captureDevice.pOnMute = onCaptureDeviceMuted;
+	captureDevice.pOnDefaultDeviceChange = onDefaultCaptureDeviceChanged;
 
-    assert(closeDevice(device) == Exit::SUCCESS);
+	std::cout << "Press any key to stop monitoring..." << std::endl;
+	std::cin.get();
 
-    assert(quit() == Exit::SUCCESS);
+	if (closeDevice(playbackDevice) == BriskAudio::Exit::FAILURE) {
+		std::cerr << "Failed to close default playback device";
+		BriskAudio::quit();
+		return EXIT_FAILURE;
+	}
+
+	if (closeDevice(captureDevice) == BriskAudio::Exit::FAILURE) {
+		std::cerr << "Failed to close default capture device";
+		BriskAudio::quit();
+		return EXIT_FAILURE;
+	}
+
+	BriskAudio::quit();
 }
